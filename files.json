@@ -1,0 +1,19 @@
+{
+  "siteName": "应用下载中心",
+  "siteDesc": "这里发布我制作的 App 与软件，全部免费下载使用",
+  "owner": "2000423",
+  "files": [
+    {
+      "id": "salary-monitor",
+      "name": "工资监视器",
+      "type": "apk",
+      "version": "1.0.0",
+      "size": "1.7 MB",
+      "date": "2026-10-27",
+      "tags": ["Android", "工具"],
+      "desc": "实时显示你此刻赚了多少钱。设置月薪和上下班时间后自动按北京时间计算，上班时金额实时跳动，HUD 科幻风格 + 磨砂玻璃质感，纯离线运行。",
+      "file": "files/salary-monitor-v1.0.0.apk",
+      "install": "下载后直接安装。若提示「未知来源应用」，允许即可。"
+    }
+  ]
+}

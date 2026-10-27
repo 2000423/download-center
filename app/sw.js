@@ -1,5 +1,5 @@
 /* 工资监视器 Service Worker：导航网络优先 + 静态资源缓存优先，只缓存成功响应 */
-const CACHE = 'salary-monitor-v13';
+const CACHE = 'salary-monitor-v14';
 const SHARE = '?sharecode=IXGIAAOCCC';   /* 站点访问码：不带会被网关拒绝（403） */
 const SHELL = ['./manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png'];
 
@@ -40,7 +40,8 @@ self.addEventListener('fetch', (e) => {
   if (req.mode === 'navigate' || req.destination === 'document') {
     e.respondWith((async () => {
       try {
-        const res = await fetch(req);
+        /* no-store：绕过 HTTP 缓存，GitHub 上改完提交后即可见最新版 */
+        const res = await fetch(req, { cache: 'no-store' });
         if (res && res.ok) {
           const c = await caches.open(CACHE);
           c.put('./index.html', res.clone());  /* 归一化存档，断网时任何带参链接都能命中 */

@@ -51,6 +51,7 @@
     box-shadow: 0 0 26px rgba(0,229,255,.35);
   }
   .icon.exe { background: linear-gradient(135deg, #7b5cff, #ff5c8a); box-shadow: 0 0 26px rgba(123,92,255,.35); }
+  .icon.web { background: linear-gradient(135deg, #5df0ff, #7fe6a4); box-shadow: 0 0 26px rgba(127,230,164,.35); }
   .info { flex: 1; min-width: 0; }
   .name-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   .fname { font-size: 19px; font-weight: 700; }
@@ -124,10 +125,11 @@ fetch('files.json?t=' + Date.now())
     document.getElementById('statExe').textContent = files.filter(f => f.type === 'exe').length;
     if (!files.length) { list.innerHTML = '<div class="empty">暂无文件，敬请期待</div>'; return; }
     list.innerHTML = files.map(f => {
-      const icon = f.type === 'exe' ? 'EXE' : 'APK';
-      const icls = f.type === 'exe' ? 'exe' : '';
+      const icon = f.type === 'exe' ? 'EXE' : f.type === 'web' ? 'iOS' : 'APK';
+      const icls = f.type === 'exe' ? 'exe' : f.type === 'web' ? 'web' : '';
       const tags = (f.tags || []).map(t => `<span class="tag">${t}</span>`).join('');
       const raw = `https://github.com/${data.owner}/${'download-center'}/raw/main/${f.file}`;
+      const osName = f.type === 'exe' ? 'Windows' : f.type === 'web' ? 'iPhone · 全平台' : 'Android';
       return `
       <div class="file-card">
         <div class="icon ${icls}">${icon}</div>
@@ -137,12 +139,14 @@ fetch('files.json?t=' + Date.now())
             <span class="ver">v${f.version}</span>
             ${tags}
           </div>
-          <div class="meta">${f.date} · ${f.size} · ${f.type === 'exe' ? 'Windows' : 'Android'}</div>
+          <div class="meta">${f.date} · ${f.size} · ${osName}</div>
           <div class="desc">${f.desc || ''}</div>
           ${f.install ? `<div class="install-tip">📥 ${f.install}</div>` : ''}
           <div class="dl-row">
-            <a class="dl-btn" href="${f.file}" download>⬇ 直接下载</a>
-            <span class="mirror">或 <a href="${raw}" target="_blank">GitHub 源</a></span>
+            ${f.type === 'web'
+              ? `<a class="dl-btn" href="${f.file}" target="_blank">📱 打开（Safari 添加到主屏幕）</a>`
+              : `<a class="dl-btn" href="${f.file}" download>⬇ 直接下载</a>
+            <span class="mirror">或 <a href="${raw}" target="_blank">GitHub 源</a></span>`}
           </div>
         </div>
       </div>`;

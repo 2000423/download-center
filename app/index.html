@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="zh-CN" style="background:#050814">
+<head>
+<meta charset="UTF-8">
+<meta name="color-scheme" content="dark">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#050814">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="工资监视器">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="icon" href="icons/icon-192.png">
+<title>工资监视器</title>
+<style>
+  /* ===== 导航模式自适应变量 =====
+     sat/sab/sal/sar = 系统安全区（刘海、灵动岛、手势条、导航栏）
+     nav-buffer      = 全屏手势 / 三段式 / 导航键场景下的额外底部缓冲
+     任一为 0 时（经典三段式、导航键不悬浮）也不会多占空间 */
+  :root {
+    /* 兜底默认值：不支持 env() 的老 WebView 也保持正常留白 */
+    --sat: 0px; --sab: 0px; --sal: 0px; --sar: 0px;
+    --nav-buffer: 0px;
+  }
+  @supports (top: env(safe-area-inset-top)) {
+    :root {
+      --sat: env(safe-area-inset-top, 0px);
+      --sab: env(safe-area-inset-bottom, 0px);
+      --sal: env(safe-area-inset-left, 0px);
+      --sar: env(safe-area-inset-right, 0px);
+    }
+  }
+  /* 已安装为独立 App（PWA / APK）时多做一点底部缓冲，避免压住手势条 */
+  @media (display-mode: standalone) { :root { --nav-buffer: 8px; } }
+  html.in-webview { --nav-buffer: 12px; }
+  @media (orientation: landscape) { :root { --nav-buffer: 4px; } }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; overscroll-behavior: none; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei", sans-serif;
+    background: radial-gradient(ellipse at 50% -10%, #0d1638 0%, #050814 55%, #03040c 100%);
+    color: #e8f6ff;
+    overflow: hidden;
+    user-select: none;
+  }
+  #app { height: 100vh; height: 100dvh; display: flex; flex-direction: column; }
+
+  /* ===== 背景 ===== */
+  .bg-layer { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+  .particle { position: absolute; border-radius: 50%; animation: floatUp linear infinite; }
+  .p1 { background: rgba(93,240,255,.5); box-shadow: 0 0 10px rgba(93,240,255,.9); }
+  .p2 { background: rgba(140,110,255,.5); box-shadow: 0 0 10px rgba(140,110,255,.9); }
+  @keyframes floatUp { 0% { transform: translateY(0); opacity: 0; } 10% { opacity: .8; } 85% { opacity: .5; } 100% { transform: translateY(-110vh); opacity: 0; } }
+  .scanline { position: absolute; left: 0; right: 0; top: 0; height: 130px; background: linear-gradient(180deg, transparent, rgba(0,229,255,.06), transparent); animation: scan 9s linear infinite; will-change: transform; }
+  @keyframes scan { 0% { transform: translateY(-30vh); } 100% { transform: translateY(115vh); } }
+
+  /* ===== 玻璃 ===== */
+  .glass {
+    background: rgba(255,255,255,.08);
+    -webkit-backdrop-filter: blur(24px) saturate(160%);
+    backdrop-filter: blur(24px) saturate(160%);
+    border: 1px solid rgba(255,255,255,.16);
+    border-radius: 22px;
+    box-shadow: 0 10px 36px rgba(0,0,0,.35);
+  }
+  .glass-strong {
+    background: rgba(30,40,80,.62);
+    -webkit-backdrop-filter: blur(40px) saturate(180%);
+    backdrop-filter: blur(40px) saturate(180%);
+    border: 1px solid rgba(255,255,255,.2);
+    border-radius: 26px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.55);
+  }
+  .neon-cyan { color: #5df0ff; text-shadow: 0 0 14px rgba(93,240,255,.75), 0 0 44px rgba(93,240,255,.35); }
+  .neon-purple { color: #b39dff; text-shadow: 0 0 14px rgba(140,110,255,.75), 0 0 44px rgba(140,110,255,.35); }
+
+  /* ===== 视图 ===== */
+  .view {
+    position: absolute; inset: 0; z-index: 1;
+    padding: 18px 20px 28px;
+    padding: calc(var(--sat) + 18px) calc(var(--sar) + 20px) calc(var(--sab) + var(--nav-buffer) + 28px) calc(var(--sal) + 20px);
+    overflow-y: auto; -webkit-overflow-scrolling: touch;
+    transition: transform .35s cubic-bezier(.22,1,.36,1), opacity .35s;
+  }
+  .view.hidden-right { transform: translateX(60%); opacity: 0; pointer-events: none; }
+
+  /* ===== 首页 ===== */
+  .header { text-align: center; margin-bottom: 18px; position: relative; padding-top: 6px; }
+  .beijing-time { font-size: 40px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .date-str { font-size: 13px; color: rgba(232,246,255,.65); margin-top: 5px; }
+  .setting-entry {
+    position: absolute; right: 0; top: -2px; padding: 9px 16px; font-size: 13px; color: #cfeaff;
+    cursor: pointer; border-radius: 999px; transition: transform .15s, opacity .15s;
+    display: flex; align-items: center; gap: 7px;
+  }
+  .setting-entry:active { transform: scale(.94); opacity: .85; }
+
+  .hero { position: relative; padding: 26px 22px; text-align: center; margin-bottom: 16px; }
+  .hero-label { font-size: 13px; color: rgba(232,246,255,.6); letter-spacing: 3px; margin-bottom: 6px; }
+  .hero-num { font-size: 52px; font-weight: 800; font-variant-numeric: tabular-nums; font-feature-settings: 'tnum' 1; line-height: 1.25; }
+  .status-tag { display: inline-block; margin-top: 12px; padding: 7px 18px; border-radius: 999px; font-size: 13px; animation: fadeSlide .5s ease; }
+  .st-working { background: rgba(0,229,255,.15); border: 1px solid rgba(0,229,255,.5); color: #5df0ff; box-shadow: 0 0 20px rgba(0,229,255,.25); }
+  .st-before { background: rgba(255,193,7,.12); border: 1px solid rgba(255,193,7,.45); color: #ffd76a; }
+  .st-after { background: rgba(140,110,255,.14); border: 1px solid rgba(140,110,255,.5); color: #b39dff; }
+  .st-rest { background: rgba(80,200,120,.12); border: 1px solid rgba(80,200,120,.45); color: #7fe6a4; }
+  @keyframes fadeSlide { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+  .progress-block { padding: 18px 20px; margin-bottom: 16px; }
+  .progress-head { display: flex; justify-content: space-between; font-size: 13px; color: rgba(232,246,255,.75); margin-bottom: 11px; }
+  .progress-track { height: 15px; border-radius: 15px; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14); overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 15px; width: 0; background: linear-gradient(90deg, #00e5ff, #7b5cff); box-shadow: 0 0 20px rgba(0,229,255,.5); position: relative; transition: width .8s ease; overflow: hidden; }
+  .progress-fill::after { content: ''; position: absolute; top: 0; left: 0; width: 60%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255,255,255,.75), transparent); animation: shimmer 1.8s linear infinite; will-change: transform; }
+  @keyframes shimmer { 0% { transform: translateX(-110%); } 100% { transform: translateX(280%); } }
+  .near-full { box-shadow: 0 0 30px rgba(0,229,255,.45); animation: nearPulse 1s ease-in-out infinite; }
+  @keyframes nearPulse { 0%,100% { filter: brightness(1); } 50% { filter: brightness(1.4); } }
+  .countdown-row { margin-top: 11px; text-align: center; font-size: 13px; color: rgba(232,246,255,.7); font-variant-numeric: tabular-nums; min-height: 16px; }
+
+  .grid { display: flex; flex-wrap: wrap; justify-content: space-between; }
+  .card { width: 48.8%; padding: 18px 16px; margin-bottom: 13px; }
+  .card-label { font-size: 12px; color: rgba(232,246,255,.6); margin-bottom: 7px; }
+  .card-num { font-size: 21px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .foot-note { text-align: center; font-size: 11px; color: rgba(232,246,255,.4); margin-top: 6px; }
+
+  /* ===== 设置页 ===== */
+  .nav-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+  .back-btn { padding: 9px 18px; font-size: 13px; color: #cfeaff; border-radius: 999px; cursor: pointer; transition: transform .15s; }
+  .back-btn:active { transform: scale(.94); }
+  .nav-title { font-size: 19px; font-weight: 700; }
+  .nav-space { width: 90px; }
+  .panel { padding: 24px 22px; }
+  .field { margin-bottom: 22px; }
+  .field-label { font-size: 13px; color: rgba(232,246,255,.75); margin-bottom: 10px; }
+  .glass-input {
+    width: 100%; padding: 13px 16px; font-size: 16px; color: #eaf7ff;
+    background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.18);
+    border-radius: 14px; outline: none; transition: border-color .2s;
+  }
+  .glass-input:focus { border-color: rgba(0,229,255,.55); }
+  .sub-input { margin-top: 10px; }
+  .option-row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .option { padding: 9px 17px; border-radius: 999px; font-size: 13px; color: rgba(232,246,255,.8); cursor: pointer; transition: all .25s ease; }
+  .option.selected { background: rgba(0,229,255,.18); border-color: rgba(0,229,255,.65); color: #5df0ff; box-shadow: 0 0 24px rgba(0,229,255,.3); }
+  .time-row { display: flex; flex-direction: column; align-items: stretch; gap: 10px; }
+  .time-row .time-sep { display: none; }
+  .time-box { flex: 1; display: flex; align-items: center; justify-content: space-between; padding: 11px 15px; border-radius: 14px; }
+  .time-cap { font-size: 12px; color: rgba(232,246,255,.6); }
+  .time-val { font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .time-sep { color: rgba(232,246,255,.4); }
+  .save-btn {
+    position: relative; overflow: hidden; margin-top: 6px; padding: 15px 0; text-align: center;
+    border-radius: 999px; font-size: 16px; font-weight: 700; color: #06121f; cursor: pointer;
+    background: linear-gradient(90deg, #00e5ff, #7b5cff);
+    box-shadow: 0 0 36px rgba(0,229,255,.45), 0 8px 24px rgba(0,0,0,.4);
+    transition: transform .15s;
+  }
+  .save-btn:active { transform: scale(.97); }
+  .ripple { position: absolute; left: 50%; top: 50%; width: 30px; height: 30px; margin: -15px 0 0 -15px; border-radius: 50%; background: rgba(255,255,255,.7); animation: rippleAnim .55s ease-out forwards; pointer-events: none; }
+  @keyframes rippleAnim { from { transform: scale(1); opacity: .8; } to { transform: scale(12); opacity: 0; } }
+  .clear-btn { margin-top: 16px; text-align: center; padding: 14px 0; border-radius: 999px; font-size: 14px; color: #ff8f9f; background: rgba(255,80,100,.1); border: 1px solid rgba(255,80,100,.4); cursor: pointer; }
+  .err-tip { margin-top: 12px; text-align: center; color: #ff8f9f; font-size: 13px; }
+  .hint { margin-top: 8px; font-size: 11px; color: rgba(232,246,255,.4); line-height: 1.6; }
+
+  /* ===== 确认弹窗 ===== */
+  .mask {
+    position: fixed; top: 0; left: 0; right: 0;
+    height: var(--vvh, 100vh); height: var(--vvh, 100dvh);
+    z-index: 20; background: rgba(3,6,18,.6);
+    -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+    display: flex; align-items: center; justify-content: center;
+    /* 弹窗整体避开刘海 / 灵动岛 / 手势条 / 导航栏，任何导航模式下都不会被遮住 */
+    padding: 16px;
+    padding: calc(var(--sat) + 14px) calc(var(--sar) + 16px) calc(var(--sab) + var(--nav-buffer) + 16px) calc(var(--sal) + 16px);
+    opacity: 0; pointer-events: none; transition: opacity .25s;
+  }
+  .mask.show { opacity: 1; pointer-events: auto; }
+  .confirm { width: 100%; max-width: 340px; max-height: 100%; padding: 28px 24px; text-align: center; transform: scale(.92); transition: transform .25s; }
+  .mask.show .confirm { transform: scale(1); }
+  .confirm-title { font-size: 18px; font-weight: 700; color: #eaf7ff; }
+  .confirm-sub { margin: 10px 0 22px; font-size: 13px; color: rgba(232,246,255,.5); }
+  .confirm-row { display: flex; gap: 14px; }
+  .c-btn { flex: 1; padding: 13px 0; border-radius: 999px; font-size: 14px; color: #cfeaff; cursor: pointer; text-align: center; }
+  .c-btn.danger { background: rgba(255,80,100,.22); border: 1px solid rgba(255,80,100,.55); color: #ff8f9f; }
+  #updNow { background: linear-gradient(90deg, #00e5ff, #7b5cff); color: #06121f; font-weight: 700; box-shadow: 0 0 24px rgba(0,229,255,.35); }
+  .earn-tail { display: inline-block; font-size: .52em; color: #9be9ff; opacity: .9; letter-spacing: 1px; font-variant-numeric: tabular-nums; font-feature-settings: 'tnum' 1; }
+
+  /* ===== 红点（新版本 / 未读公告） ===== */
+  .dot {
+    width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; display: none;
+    background: #ff4d6a; box-shadow: 0 0 10px rgba(255,77,106,.9);
+  }
+  .dot.show { display: block; animation: dotPulse 1.8s ease-in-out infinite; }
+  @keyframes dotPulse { 0%,100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.3); opacity: .7; } }
+
+  /* ===== 公告条 ===== */
+  .notice-bar {
+    display: none; align-items: center; gap: 9px; padding: 11px 14px; margin-bottom: 13px;
+    border-radius: 16px; font-size: 12.5px; color: #cfeaff; cursor: pointer;
+  }
+  .notice-bar:active { transform: scale(.985); }
+  .notice-ico { font-size: 13px; }
+  .notice-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .notice-arrow { opacity: .45; font-size: 15px; }
+
+  /* ===== 设置页：功能行 ===== */
+  .setting-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 13px 2px; cursor: pointer; }
+  .setting-row:active { opacity: .8; }
+  .row-divider { height: 1px; background: rgba(255,255,255,.1); }
+  .row-left { display: flex; align-items: center; gap: 11px; min-width: 0; }
+  .row-ico {
+    width: 30px; height: 30px; border-radius: 10px; flex: 0 0 auto;
+    display: flex; align-items: center; justify-content: center; font-size: 14px;
+    background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14);
+  }
+  .row-title { font-size: 14px; color: #eaf7ff; }
+  .row-sub { font-size: 11px; color: rgba(232,246,255,.45); margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row-right { display: flex; align-items: center; gap: 7px; flex: 0 0 auto; }
+  .row-arrow { opacity: .4; font-size: 17px; }
+
+  /* ===== 公告弹窗 ===== */
+  .ann-modal { text-align: left; display: flex; flex-direction: column; padding: 22px 20px; max-height: 100%; }
+  .ann-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .ann-close {
+    width: 28px; height: 28px; border-radius: 50%; flex: 0 0 auto;
+    display: flex; align-items: center; justify-content: center; font-size: 12px; color: #cfeaff;
+    background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.16); cursor: pointer;
+  }
+  .ann-list { overflow-y: auto; -webkit-overflow-scrolling: touch; flex: 1; }
+  #annOk { flex: 0 0 auto; }
+  .ann-item { padding: 13px 0; border-bottom: 1px solid rgba(255,255,255,.08); }
+  .ann-item:last-child { border-bottom: none; }
+  .ann-row { display: flex; align-items: center; gap: 7px; margin-bottom: 5px; }
+  .ann-title { font-size: 14px; font-weight: 700; color: #eaf7ff; }
+  .ann-date { font-size: 10.5px; color: rgba(232,246,255,.4); margin-bottom: 7px; font-variant-numeric: tabular-nums; }
+  .ann-body { font-size: 12.5px; line-height: 1.8; color: rgba(232,246,255,.72); white-space: pre-wrap; }
+  .ann-tag {
+    font-size: 9px; padding: 2px 6px; border-radius: 6px; flex: 0 0 auto;
+    background: rgba(0,229,255,.16); border: 1px solid rgba(0,229,255,.4); color: #5df0ff;
+  }
+
+  /* ===== 更新弹窗说明 ===== */
+  .upd-notes {
+    text-align: left; margin: 0 0 20px; font-size: 12.5px; line-height: 1.9;
+    color: rgba(232,246,255,.72); max-height: 34vh; overflow-y: auto;
+  }
+  .upd-notes li { margin-left: 16px; }
+</style>
+</head>
+<body>
+<!-- 启动兜底界面：脚本正常会隐藏；若加载/运行出错则显示提示与重试，绝不会黑屏白屏 -->
+<div id="boot" style="position:fixed;inset:0;z-index:999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px;background:#050814;color:#5df0ff;font-family:-apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif;text-align:center;padding:32px;">
+  <div style="width:64px;height:64px;border-radius:18px;border:1px solid rgba(93,240,255,.4);display:flex;align-items:center;justify-content:center;box-shadow:0 0 32px rgba(0,229,255,.25);animation:bootSpin 2.4s ease-in-out infinite;">
+    <svg viewBox="0 0 48 48" fill="none" style="width:34px;height:34px"><circle cx="24" cy="24" r="17" stroke="#5df0ff" stroke-width="3.5"/><path d="M24 14v10l7 5" stroke="#5df0ff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </div>
+  <div id="bootMsg" style="font-size:14px;letter-spacing:1px">正在启动…</div>
+  <div id="bootBtn" style="display:none;margin-top:4px;padding:11px 30px;border-radius:999px;font-size:14px;font-weight:700;color:#06121f;background:linear-gradient(90deg,#00e5ff,#7b5cff);" onclick="location.reload()">重新加载</div>
+</div>
+<style>
+  @keyframes bootSpin { 0%,100% { transform: scale(1); opacity: .85; } 50% { transform: scale(1.06); opacity: 1; } }
+</style>
+<div id="app">
+  <div class="bg-layer" id="bgLayer"><div class="scanline"></div></div>
+
+  <!-- 主页 -->
+  <div class="view" id="homeView">
+    <div class="header">
+      <div class="beijing-time neon-cyan" id="timeStr">--:--:--</div>
+      <div class="date-str" id="dateStr"></div>
+      <div class="setting-entry glass" id="btnSettings">
+        <span>⚙ 设置</span><span class="dot" id="setDot"></span>
+      </div>
+    </div>
+
+    <!-- 公告条：有公告时显示，点击查看详情 -->
+    <div class="notice-bar glass" id="noticeBar">
+      <span class="notice-ico">📢</span>
+      <span class="notice-text" id="noticeText"></span>
+      <span class="dot" id="noticeDot"></span>
+      <span class="notice-arrow">›</span>
+    </div>
+
+    <div class="hero glass">
+      <div class="hero-label">今日已赚取</div>
+      <div class="hero-num neon-cyan" id="heroNum"><span id="heroMain">¥ 0.00</span><span class="earn-tail" id="heroTail">，00</span></div>
+      <div id="statusTag" class="status-tag st-before">未配置</div>
+    </div>
+
+    <div class="progress-block glass">
+      <div class="progress-head"><span>今日工资进度</span><span class="neon-cyan" id="progressPct">0.0%</span></div>
+      <div class="progress-track" id="track"><div class="progress-fill" id="fill"></div></div>
+      <div class="countdown-row" id="countdown"></div>
+    </div>
+
+    <div class="grid">
+      <div class="card glass"><div class="card-label">每秒工资</div><div class="card-num neon-purple" id="perSec">¥ 0.00</div></div>
+      <div class="card glass"><div class="card-label">每小时工资</div><div class="card-num neon-purple" id="hourly">¥ 0.00</div></div>
+      <div class="card glass"><div class="card-label">今日目标工资</div><div class="card-num neon-cyan" id="daily">¥ 0.00</div></div>
+      <div class="card glass"><div class="card-label">今日还需赚</div><div class="card-num neon-cyan" id="remaining">¥ 0.00</div></div>
+    </div>
+
+    <div class="foot-note" id="footNote"></div>
+  </div>
+
+  <!-- 设置页 -->
+  <div class="view hidden-right" id="settingsView">
+    <div class="nav-row">
+      <div class="back-btn glass" id="btnBack">‹ 返回</div>
+      <div class="nav-title neon-cyan">设置</div>
+      <div class="nav-space"></div>
+    </div>
+    <div class="panel glass-strong">
+      <div class="field">
+        <div class="field-label">月薪（元）</div>
+        <input class="glass-input" id="fSalary" type="number" inputmode="decimal" placeholder="例如 10000">
+      </div>
+      <div class="field">
+        <div class="field-label">休息模式</div>
+        <div class="option-row" id="modeRow"></div>
+        <input class="glass-input sub-input" id="fCustom" type="number" inputmode="numeric" placeholder="每月休息几天？例如 4" style="display:none">
+        <div class="hint" id="modeHint"></div>
+      </div>
+      <div class="field">
+        <div class="field-label">每日上班时段</div>
+        <div class="time-row">
+          <div class="time-box glass"><span class="time-cap">上班</span><input type="time" id="fStart" value="09:00"></div>
+          <span class="time-sep">→</span>
+          <div class="time-box glass"><span class="time-cap">下班</span><input type="time" id="fEnd" value="18:00"></div>
+        </div>
+      </div>
+      <div class="save-btn" id="btnSave">保存并重算</div>
+      <div class="clear-btn" id="btnClear">一键清空配置</div>
+      <div class="err-tip" id="errTip"></div>
+      <div class="hint">数据仅保存在本机 · 每天凌晨自动重新计算 · 完全离线运行</div>
+    </div>
+
+    <!-- 公告与更新 -->
+    <div class="panel glass-strong" style="padding:6px 20px; margin-top:14px;">
+      <div class="setting-row" id="rowAnnounce">
+        <div class="row-left">
+          <span class="row-ico">📢</span>
+          <div>
+            <div class="row-title">公告</div>
+            <div class="row-sub" id="annSub">暂无公告</div>
+          </div>
+        </div>
+        <div class="row-right"><span class="dot" id="annRowDot"></span><span class="row-arrow">›</span></div>
+      </div>
+      <div class="row-divider"></div>
+      <div class="setting-row" id="rowUpdate">
+        <div class="row-left">
+          <span class="row-ico">⟳</span>
+          <div>
+            <div class="row-title">检查更新</div>
+            <div class="row-sub" id="updSub">当前版本 v1.1.0</div>
+          </div>
+        </div>
+        <div class="row-right"><span class="dot" id="updDot"></span><span class="row-arrow">›</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 清空确认 -->
+<div class="mask" id="confirmMask">
+  <div class="confirm glass-strong">
+    <div class="confirm-title">清空全部配置？</div>
+    <div class="confirm-sub">将回到首次打开状态，需要重新填写参数</div>
+    <div class="confirm-row">
+      <div class="c-btn glass" id="btnCancel">取消</div>
+      <div class="c-btn danger" id="btnConfirmClear">确认清空</div>
+    </div>
+  </div>
+</div>
+
+<!-- 公告弹窗 -->
+<div class="mask" id="annMask">
+  <div class="confirm glass-strong ann-modal">
+    <div class="ann-head">
+      <div class="confirm-title neon-cyan" style="font-size:17px">公告</div>
+      <div class="ann-close" id="annClose">✕</div>
+    </div>
+    <div class="ann-list" id="annList"></div>
+    <div class="c-btn glass" id="annOk" style="margin-top:16px;padding:12px 0">知道了</div>
+  </div>
+</div>
+
+<!-- 发现新版本 -->
+<div class="mask" id="updMask">
+  <div class="confirm glass-strong">
+    <div class="confirm-title neon-cyan">发现新版本</div>
+    <div class="confirm-sub" id="updVer">v1.1.0</div>
+    <ul class="upd-notes" id="updNotes"></ul>
+    <div class="confirm-row">
+      <div class="c-btn glass" id="updLater">稍后</div>
+      <div class="c-btn" id="updNow">立即更新</div>
+    </div>
+  </div>
+</div>
+
+<!-- 首次配置弹窗 -->
+<div class="mask" id="initMask">
+  <div class="confirm glass-strong" style="text-align:left; max-height:100%; overflow-y:auto;">
+    <div class="confirm-title neon-cyan" style="text-align:center">初次见面 · 配置工资参数</div>
+    <div class="confirm-sub" style="text-align:center">数据仅保存在本机，纯离线运行</div>
+    <div class="field">
+      <div class="field-label">月薪（元）</div>
+      <input class="glass-input" id="iSalary" type="number" inputmode="decimal" placeholder="例如 10000">
+    </div>
+    <div class="field">
+      <div class="field-label">休息模式</div>
+      <div class="option-row" id="initModeRow"></div>
+      <input class="glass-input sub-input" id="iCustom" type="number" inputmode="numeric" placeholder="每月休息几天？例如 4" style="display:none">
+    </div>
+    <div class="field">
+      <div class="field-label">每日上班时段</div>
+      <div class="time-row">
+        <div class="time-box glass"><span class="time-cap">上班</span><input type="time" id="iStart" value="09:00"></div>
+        <span class="time-sep">→</span>
+        <div class="time-box glass"><span class="time-cap">下班</span><input type="time" id="iEnd" value="18:00"></div>
+      </div>
+    </div>
+    <div class="save-btn" id="btnInitSave">启动监视器</div>
+    <div class="err-tip" id="initErr"></div>
+  </div>
+</div>
+
+<script>
+/* ===== 启动兜底：任何脚本/资源错误都显示可重试提示，不留下黑屏白屏 ===== */
+function bootError(msg) {
+  if (window.__booted) return;
+  const b = document.getElementById('boot');
+  if (!b) return;
+  b.style.display = 'flex'; b.style.opacity = '1';
+  const m = document.getElementById('bootMsg');
+  if (m) m.innerHTML = '启动遇到问题<br><span style="font-size:11px;opacity:.55">' +
+    String(msg || '加载失败').slice(0, 90) + '</span><br><span style="font-size:11px;opacity:.55">请检查网络后重试</span>';
+  const btn = document.getElementById('bootBtn');
+  if (btn) btn.style.display = 'inline-block';
+}
+window.addEventListener('error', (e) => bootError(e.message));
+window.addEventListener('unhandledrejection', () => bootError('资源加载失败'));
+
+const STORAGE_KEY = 'salary_config';
+
+/* ===== 导航模式适配 =====
+   1) 刘海 / 灵动岛 / 手势条 / 导航栏：由 CSS 的 env(safe-area-inset-*) 处理（四边都留）
+   2) 全屏手势、经典三段式、实体导航键：底部额外缓冲，确保按钮不被系统栏压住
+   3) 内嵌 WebView（APK）环境额外加缓冲 */
+(function detectNavMode() {
+  const root = document.documentElement;
+  const ua = navigator.userAgent || '';
+  if (/;\s*wv\)/i.test(ua)) root.classList.add('in-webview');       /* APK / 内嵌浏览器 */
+  if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) {
+    root.classList.add('in-standalone');                            /* 已添加到主屏幕 */
+  }
+  /* 输入法弹出时（可视区变矮）让弹窗始终完整居中在可见区域内 */
+  const syncVH = () => {
+    const vv = window.visualViewport;
+    if (!vv || !vv.height || vv.height < 200) return;
+    root.style.setProperty('--vvh', Math.round(vv.height) + 'px');
+  };
+  syncVH();
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', syncVH);
+    window.visualViewport.addEventListener('scroll', syncVH);
+  }
+})();
+const MODES = [
+  { value: 'double', label: '双休' },
+  { value: 'single', label: '单休' },
+  { value: 'custom', label: '自定义月休' },
+  { value: 'none', label: '无休' }
+];
+let config = null;
+let displayEarned = 0;
+
+const $ = id => document.getElementById(id);
+const fmt = n => Number(n || 0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+/* 主金额格式：两位小数（¥ 12.34）；尾数「，56」由时钟驱动的秒表计数控管 */
+/* 每秒工资：数值太小（不足 1 分/秒）时自动放大到 4 位小数，避免显示成 0 */
+const fmtPerSec = n => (n > 0 && n < 0.01) ? Number(n).toFixed(4) : fmt(n);
+const toSec = t => { if (!t) return 0; const [h, m] = t.split(':').map(Number); return h * 3600 + m * 60; };
+const pad = n => String(n).padStart(2, '0');
+const hms = s => { s = Math.max(0, Math.floor(s)); return `${pad(Math.floor(s/3600))}:${pad(Math.floor(s%3600/60))}:${pad(s%60)}`; };
+const daysInMonth = (y, m) => new Date(y, m + 1, 0).getDate();
+const weekendCount = (y, m) => { let c = 0; const t = daysInMonth(y, m); for (let d = 1; d <= t; d++) { const w = new Date(y, m, d).getDay(); if (w === 0 || w === 6) c++; } return c; };
+const payDays = (mode, y, m, custom) => {
+  const t = daysInMonth(y, m);
+  if (mode === 'double') return t - weekendCount(y, m);
+  if (mode === 'single') return (t / 7) * 6;
+  if (mode === 'custom') return Math.max(1, t - (Number(custom) || 0));
+  return t;
+};
+const isRest = (mode, dow) => (mode === 'double') ? (dow === 0 || dow === 6) : (mode === 'single') ? dow === 0 : false;
+
+function calc() {
+  if (!config) return null;
+  const d = new Date();
+  const y = d.getFullYear(), m = d.getMonth(), dow = d.getDay();
+  const pd = payDays(config.mode, y, m, config.customRest);
+  const daily = config.salary / pd;
+  const startS = toSec(config.start), endS = toSec(config.end);
+  const hourly = daily / Math.max(0.5, (endS - startS) / 3600);
+  const perSec = hourly / 3600;
+  const rest = isRest(config.mode, dow);
+  const nowS = d.getHours() * 3600 + d.getMinutes() * 60 + d.getSeconds();
+  let status = 'working', eff = 0, cd = 0;
+  if (rest) status = 'rest';
+  else if (nowS < startS) { status = 'before'; cd = startS - nowS; }
+  else if (nowS >= endS) { status = 'after'; eff = endS - startS; }
+  else { status = 'working'; eff = nowS - startS; cd = endS - nowS; }
+  const earned = perSec * eff;
+  return { total: daysInMonth(y, m), payDays: pd, daily, hourly, perSec, status, earned,
+           remaining: Math.max(0, daily - earned), progress: Math.min(100, daily > 0 ? earned / daily * 100 : 0), cd };
+}
+
+const statusMap = { working: '上班中 · 正在赚钱', before: '未到上班时间', after: '已下班', rest: '休息日休息' };
+const WEEK = ['日','一','二','三','四','五','六'];
+
+function render() {
+  const d = new Date();
+  $('timeStr').textContent = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  $('dateStr').textContent = `${d.getMonth()+1}月${d.getDate()}日 星期${WEEK[d.getDay()]}`;
+  const c = calc();
+  if (!c) return;
+  const tag = $('statusTag');
+  tag.className = 'status-tag st-' + c.status;
+  tag.textContent = statusMap[c.status];
+  $('perSec').textContent = '¥ ' + fmtPerSec(c.perSec);
+  $('hourly').textContent = '¥ ' + fmt(c.hourly);
+  $('daily').textContent = '¥ ' + fmt(c.daily);
+  $('remaining').textContent = '¥ ' + fmt(c.remaining);
+  $('progressPct').textContent = c.progress.toFixed(1) + '%';
+  const fill = $('fill');
+  fill.style.width = c.progress + '%';
+  fill.classList.toggle('near-full', c.progress >= 90);
+  $('track').classList.toggle('near-full', c.progress >= 90);
+  const cd = $('countdown');
+  if (c.status === 'before') cd.textContent = '距离上班还有 ' + hms(c.cd);
+  else if (c.status === 'working') cd.textContent = '距离下班还有 ' + hms(c.cd);
+  else cd.textContent = '';
+  $('footNote').textContent = `当月计薪 ${Number(c.payDays.toFixed(1))} 天 / ${c.total} 天 · 每秒自动刷新`;
+}
+let lastFrame = performance.now();
+let lastMain = '';
+let lastTail = '';
+/* calc 结果 100ms 缓存一次，渲染循环里不再重复计算 */
+let calcCache = { t: 0, v: null };
+function calcCached() {
+  const n = performance.now();
+  if (!calcCache.v || n - calcCache.t > 100) { calcCache.v = calc(); calcCache.t = n; }
+  return calcCache.v;
+}
+/* 逐帧渲染：主金额平滑逼近真实金额；尾数「，56」是真正的秒表——
+   由系统时钟直接驱动，每 10ms 均匀 +1、每秒归零一轮，绝对均匀流畅 */
+function earnLoop() {
+  const main = $('heroMain'), tailEl = $('heroTail');
+  const c = calcCached();
+  if (!c) {
+    if (lastMain !== '¥ 0.00') { main.textContent = '¥ 0.00'; lastMain = '¥ 0.00'; }
+    if (lastTail !== '，00') { tailEl.textContent = '，00'; lastTail = '，00'; }
+    requestAnimationFrame(earnLoop); return;
+  }
+  const now = performance.now();
+  const dt = Math.min(100, now - lastFrame);
+  lastFrame = now;
+  const diff = c.earned - displayEarned;
+  displayEarned = Math.abs(diff) < 0.00005 ? c.earned : displayEarned + diff * (1 - Math.exp(-dt / 80));
+  const mainStr = '¥ ' + fmt(displayEarned);
+  if (mainStr !== lastMain) { main.textContent = mainStr; lastMain = mainStr; }
+  const tailStr = '，' + pad(Math.floor((Date.now() % 1000) / 10));
+  if (tailStr !== lastTail) { tailEl.textContent = tailStr; lastTail = tailStr; }
+  requestAnimationFrame(earnLoop);
+}
+requestAnimationFrame(earnLoop);
+setInterval(render, 1000);
+
+/* ===== 视图切换 ===== */
+$('btnSettings').onclick = () => { loadSettings(); $('settingsView').classList.remove('hidden-right'); $('homeView').classList.add('hidden-right'); };
+$('btnBack').onclick = () => { $('settingsView').classList.add('hidden-right'); $('homeView').classList.remove('hidden-right'); };
+
+/* ===== 配置表单 ===== */
+let form = { mode: 'double' };
+function loadSettings() {
+  try { const raw = JSON.parse(localStorage.getItem(STORAGE_KEY)); if (raw && raw.salary) config = raw; else config = null; } catch (e) { config = null; }
+  if (config) {
+    $('fSalary').value = config.salary;
+    $('fCustom').value = config.customRest || '';
+    $('fStart').value = config.start; $('fEnd').value = config.end;
+    form.mode = config.mode;
+  } else {
+    $('fSalary').value = ''; $('fCustom').value = ''; $('fStart').value = '09:00'; $('fEnd').value = '18:00';
+    form.mode = 'double';
+  }
+  $('errTip').textContent = '';
+  renderModeRow('modeRow', 'fCustom', 'modeHint');
+}
+function renderModeRow(rowId, customId, hintId) {
+  const row = $(rowId);
+  row.innerHTML = '';
+  MODES.forEach(o => {
+    const el = document.createElement('div');
+    el.className = 'option glass' + (form.mode === o.value ? ' selected' : '');
+    el.textContent = o.label;
+    el.onclick = () => { form.mode = o.value; renderModeRow('modeRow', 'fCustom', 'modeHint'); renderModeRow('initModeRow', 'iCustom', null); };
+    row.appendChild(el);
+  });
+  $(customId).style.display = form.mode === 'custom' ? 'block' : 'none';
+  if (hintId) $(hintId).textContent =
+    form.mode === 'single' ? '单休默认每周日休息' :
+    form.mode === 'custom' ? '按"当月总天数 - 月休天数"计算日薪，所有日期均视为计薪日' : '';
+}
+
+function validate(salaryEl, customEl, startEl, endEl) {
+  const salary = parseFloat($(salaryEl).value);
+  const customRest = parseInt($(customEl).value) || 0;
+  const start = $(startEl).value, end = $(endEl).value;
+  if (!salary || salary <= 0) return { err: '请输入有效的月薪金额' };
+  if (!start || !end) return { err: '请选择上班和下班时间' };
+  if (toSec(end) <= toSec(start)) return { err: '下班时间需要晚于上班时间' };
+  if (form.mode === 'custom' && (customRest < 0 || customRest > 30)) return { err: '月休天数需在 0~30 之间' };
+  return { config: { salary, mode: form.mode, customRest, start, end } };
+}
+
+function saveConfig(e) {
+  const r = validate('fSalary', 'fCustom', 'fStart', 'fEnd');
+  if (r.err) { $('errTip').textContent = r.err; return; }
+  $('errTip').textContent = '';
+  config = r.config;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
+  showToast('已保存，薪资已重算');
+  ripple(e);
+  setTimeout(() => $('btnBack').click(), 500);
+}
+function ripple(e) {
+  const btn = e.currentTarget || e.target;
+  const r = document.createElement('div');
+  r.className = 'ripple';
+  btn.appendChild(r);
+  setTimeout(() => r.remove(), 600);
+}
+$('btnSave').onclick = saveConfig;
+
+/* 一键清空 */
+$('btnClear').onclick = () => { $('confirmMask').classList.add('show'); };
+$('btnCancel').onclick = () => $('confirmMask').classList.remove('show');
+$('btnConfirmClear').onclick = () => {
+  localStorage.removeItem(STORAGE_KEY);
+  config = null; displayEarned = 0;
+  $('confirmMask').classList.remove('show');
+  $('settingsView').classList.add('hidden-right');
+  $('homeView').classList.remove('hidden-right');
+  showInit();
+};
+
+/* 首次配置弹窗 */
+function showInit() {
+  $('iSalary').value = ''; $('iCustom').value = ''; $('iStart').value = '09:00'; $('iEnd').value = '18:00';
+  form.mode = 'double';
+  renderModeRow('initModeRow', 'iCustom', null);
+  $('initErr').textContent = '';
+  $('initMask').classList.add('show');
+}
+$('btnInitSave').onclick = (e) => {
+  const r = validate('iSalary', 'iCustom', 'iStart', 'iEnd');
+  if (r.err) { $('initErr').textContent = r.err; return; }
+  $('initErr').textContent = '';
+  config = r.config;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
+  $('initMask').classList.remove('show');
+  ripple(e);
+  render();
+};
+
+/* Toast */
+let toastTimer = null;
+function showToast(msg) {
+  let t = $('toast');
+  if (!t) { t = document.createElement('div'); t.id = 'toast';
+    t.style.cssText = 'position:fixed;left:50%;bottom:15%;transform:translateX(-50%);z-index:99;padding:12px 24px;border-radius:999px;font-size:14px;color:#eaf7ff;background:rgba(30,40,80,.85);border:1px solid rgba(255,255,255,.2);backdrop-filter:blur(20px);box-shadow:0 10px 30px rgba(0,0,0,.5);transition:opacity .3s;opacity:0;pointer-events:none;';
+    document.body.appendChild(t); }
+  t.textContent = msg; t.style.opacity = '1';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.style.opacity = '0', 1600);
+}
+
+/* 粒子背景 */
+(function () {
+  const layer = $('bgLayer');
+  for (let i = 0; i < 24; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle ' + (Math.random() > 0.5 ? 'p1' : 'p2');
+    const size = 2 + Math.random() * 5;
+    p.style.cssText = `left:${Math.random()*98}%;top:${30+Math.random()*70}%;width:${size}px;height:${size}px;` +
+      `animation-duration:${14+Math.random()*20}s;animation-delay:-${Math.random()*25}s;`;
+    layer.appendChild(p);
+  }
+})();
+
+/* ===== 公告 & 检查更新 ===== */
+const APP_VERSION = '1.1.1';              /* 当前 App 版本：发新版时改这里 */
+const META_URL = 'app-meta.json';         /* 远端元数据（公告 + 最新版本号） */
+const META_CACHE_KEY = 'salary_meta_cache';
+/* 公告的 GitHub 数据源：可直接在 github.com 网页上编辑该文件，无需发版 */
+const ANN_REMOTE_URL = 'https://2000423.github.io/download-center/announcements.json';
+const ANN_READ_KEY = 'salary_ann_read';
+const AUTO_CHECK_GAP = 5 * 60 * 1000;     /* 后台自动检查的最小间隔 */
+
+let meta = null;          /* 远端元数据 */
+let lastCheckAt = 0;      /* 上次检查时间 */
+
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+/* 语义化版本比较：a>b 返回 1，a<b 返回 -1 */
+function cmpVer(a, b) {
+  const pa = String(a || '0').split('.'), pb = String(b || '0').split('.');
+  for (let i = 0; i < 3; i++) {
+    const d = (parseInt(pa[i], 10) || 0) - (parseInt(pb[i], 10) || 0);
+    if (d) return d > 0 ? 1 : -1;
+  }
+  return 0;
+}
+/* 站点访问码：静态资源需要带上才能通过网关 */
+function sharecode() {
+  const m = location.search.match(/[?&]sharecode=([^&]+)/);
+  if (m) { try { sessionStorage.setItem('sharecode', m[1]); } catch (e) {} return m[1]; }
+  try { return sessionStorage.getItem('sharecode') || ''; } catch (e) { return ''; }
+}
+
+function readAnnRead() {
+  try { const v = JSON.parse(localStorage.getItem(ANN_READ_KEY)); return Array.isArray(v) ? v : []; } catch (e) { return []; }
+}
+function markAnnRead(ids) {
+  try {
+    const set = new Set(readAnnRead());
+    ids.forEach(id => id && set.add(id));
+    localStorage.setItem(ANN_READ_KEY, JSON.stringify(Array.from(set)));
+  } catch (e) {}
+}
+const allAnns = () => (meta && Array.isArray(meta.announcements)) ? meta.announcements.filter(a => a && a.id) : [];
+const unreadAnns = () => { const r = readAnnRead(); return allAnns().filter(a => r.indexOf(a.id) < 0); };
+const hasNewVersion = () => !!meta && cmpVer(meta.latestVersion, APP_VERSION) > 0;
+
+/* 依据元数据刷新：公告条 / 红点 / 副标题 */
+function applyMeta() {
+  const all = allAnns(), unread = unreadAnns(), newVer = hasNewVersion();
+  if (all.length) {
+    $('noticeText').textContent = all[0].title || '有新公告';
+    $('noticeBar').style.display = 'flex';
+  } else {
+    $('noticeBar').style.display = 'none';
+  }
+  $('noticeDot').classList.toggle('show', unread.length > 0);
+  $('annRowDot').classList.toggle('show', unread.length > 0);
+  $('updDot').classList.toggle('show', newVer);
+  $('setDot').classList.toggle('show', newVer || unread.length > 0);
+  $('annSub').textContent = all.length
+    ? ((all[0].date ? all[0].date + ' · ' : '') + (all[0].title || '公告'))
+    : '暂无公告';
+  const sub = $('updSub');
+  if (newVer) {
+    sub.textContent = '发现新版本 v' + meta.latestVersion + '，点击查看';
+    sub.style.color = '#5df0ff';
+  } else {
+    sub.textContent = '当前版本 v' + APP_VERSION + ' · 已是最新';
+    sub.style.color = '';
+  }
+}
+
+async function loadMeta() {
+  const sc = sharecode();
+  const url = META_URL + '?t=' + Date.now() + (sc ? '&sharecode=' + encodeURIComponent(sc) : '');
+  const res = await fetch(url, { cache: 'no-store' });
+  if (!res || !res.ok) throw new Error('HTTP ' + (res ? res.status : '0'));
+  const data = await res.json();
+  if (!data || !data.latestVersion) throw new Error('meta 格式错误');
+  meta = data;
+  try { localStorage.setItem(META_CACHE_KEY, JSON.stringify(data)); } catch (e) {}
+  applyMeta();
+  await loadRemoteAnns();   /* 公告以 GitHub 上的版本为准（可在网页直接改） */
+  return data;
+}
+
+/* 拉取 GitHub 上的公告：成功则覆盖本地公告；失败（断网/被墙/JSON 写错）保持原样，不影响 App */
+async function loadRemoteAnns() {
+  let timer = null;
+  try {
+    const ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    if (ctl) timer = setTimeout(() => ctl.abort(), 4000);
+    const res = await fetch(ANN_REMOTE_URL + '?t=' + Date.now(), {
+      cache: 'no-store',
+      signal: ctl ? ctl.signal : undefined
+    });
+    if (timer) clearTimeout(timer);
+    if (!res || !res.ok) return false;
+    const data = await res.json();
+    const rawList = (data && Array.isArray(data.announcements)) ? data.announcements : null;
+    if (!rawList || !meta) return false;   /* 数组为空则视为“清空公告” */
+    const list = rawList
+      .filter(a => a && a.id && a.title)
+      .map(a => ({
+        id: String(a.id),
+        title: String(a.title),
+        date: a.date ? String(a.date) : '',
+        pinned: !!a.pinned,
+        content: a.content ? String(a.content) : ''
+      }));
+    meta.announcements = list;
+    try { localStorage.setItem(META_CACHE_KEY, JSON.stringify(meta)); } catch (e) {}
+    applyMeta();
+    return true;
+  } catch (e) {
+    if (timer) clearTimeout(timer);
+    return false;
+  }
+}
+
+/* 检查更新：manual=true 时给出可见反馈 */
+async function checkUpdate(manual) {
+  const sub = $('updSub');
+  if (manual) { sub.textContent = '正在检查…'; sub.style.color = ''; }
+  try {
+    await loadMeta();
+    lastCheckAt = Date.now();
+    if (hasNewVersion()) {
+      if (manual) showUpdateModal();
+      return true;
+    }
+    if (manual) showToast('已是最新版本 v' + APP_VERSION);
+    return false;
+  } catch (e) {
+    applyMeta();
+    if (manual) showToast(navigator.onLine === false ? '当前无网络，请联网后重试' : '检查失败，请稍后再试');
+    return false;
+  }
+}
+
+function showUpdateModal() {
+  $('updVer').textContent = 'v' + meta.latestVersion + (meta.releasedAt ? ' · ' + meta.releasedAt : '');
+  const notes = Array.isArray(meta.updateNotes) ? meta.updateNotes : [];
+  $('updNotes').innerHTML = notes.length
+    ? notes.map(n => '<li>' + esc(n) + '</li>').join('')
+    : '<li>细节优化与问题修复</li>';
+  $('updMask').classList.add('show');
+}
+
+/* 立即更新：清空离线缓存 + 触发 SW 更新，然后重新加载最新页面 */
+async function doUpdate() {
+  const btn = $('updNow');
+  btn.textContent = '正在更新…';
+  try {
+    if ('serviceWorker' in navigator) {
+      const reg = await navigator.serviceWorker.getRegistration();
+      if (reg) { try { await reg.update(); } catch (e) {} }
+    }
+    const keys = await caches.keys();
+    await Promise.all(keys.map(k => caches.delete(k)));
+  } catch (e) {}
+  location.reload();
+}
+
+function openAnnouncements() {
+  const all = allAnns();
+  $('annList').innerHTML = all.length
+    ? all.map(a => `
+        <div class="ann-item">
+          <div class="ann-row">
+            ${a.pinned ? '<span class="ann-tag">置顶</span>' : ''}
+            <span class="ann-title">${esc(a.title || '公告')}</span>
+          </div>
+          ${a.date ? `<div class="ann-date">${esc(a.date)}</div>` : ''}
+          <div class="ann-body">${esc(a.content || '')}</div>
+        </div>`).join('')
+    : '<div style="text-align:center;padding:26px 0;font-size:13px;color:rgba(232,246,255,.45)">暂无公告</div>';
+  $('annMask').classList.add('show');
+  markAnnRead(all.map(a => a.id));
+  applyMeta();
+}
+
+$('noticeBar').onclick = openAnnouncements;
+$('rowAnnounce').onclick = openAnnouncements;
+$('annClose').onclick = () => $('annMask').classList.remove('show');
+$('annOk').onclick = () => $('annMask').classList.remove('show');
+$('rowUpdate').onclick = () => checkUpdate(true);
+$('updLater').onclick = () => $('updMask').classList.remove('show');
+$('updNow').onclick = doUpdate;
+
+/* 启动：先用本地缓存立刻显示，再静默联网检查 */
+(function initMeta() {
+  try { const c = JSON.parse(localStorage.getItem(META_CACHE_KEY)); if (c && c.latestVersion) meta = c; } catch (e) {}
+  applyMeta();
+  setTimeout(() => checkUpdate(false), 400);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && Date.now() - lastCheckAt > AUTO_CHECK_GAP) checkUpdate(false);
+  });
+})();
+
+/* 启动 */
+(function () {
+  try { const raw = JSON.parse(localStorage.getItem(STORAGE_KEY)); if (raw && raw.salary) config = raw; } catch (e) {}
+  render();
+  if (!config) showInit();
+  /* 启动成功：淡出兜底界面 */
+  const b = $('boot');
+  if (b) { b.style.transition = 'opacity .3s'; b.style.opacity = '0'; setTimeout(() => { b.style.display = 'none'; window.__booted = true; }, 320); }
+})();
+
+/* Service Worker 注册（离线可用 + 每次打开检查更新） */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' })
+      .then((reg) => { reg.update().catch(() => {}); })
+      .catch(() => {});
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.getRegistration().then((r) => r && r.update().catch(() => {})).catch(() => {});
+    }
+  });
+}
+</script>
+</body>
+</html>

@@ -1,5 +1,5 @@
 /* 工资监视器 Service Worker：导航网络优先 + 静态资源缓存优先，只缓存成功响应 */
-const CACHE = 'salary-monitor-v14';
+const CACHE = 'salary-monitor-v15';
 const SHARE = '?sharecode=IXGIAAOCCC';   /* 站点访问码：不带会被网关拒绝（403） */
 const SHELL = ['./manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png'];
 
@@ -65,27 +65,6 @@ self.addEventListener('fetch', (e) => {
           '<div style="margin-top:10px;font-size:13px;color:#8fb8cc">请联网后重新打开 App</div></div></body>',
           { headers: { 'Content-Type': 'text/html; charset=utf-8' } }
         );
-      }
-    })());
-    return;
-  }
-
-  /* 元数据（公告 / 版本号）：网络优先，拿不到才用缓存兜底 */
-  if (url.pathname.endsWith('/app-meta.json')) {
-    e.respondWith((async () => {
-      try {
-        const res = await fetch(req, { cache: 'no-store' });
-        if (res && res.ok) {
-          const c = await caches.open(CACHE);
-          c.put(req, res.clone());
-          return res;
-        }
-        const c = await caches.open(CACHE);
-        return (await c.match(req, { ignoreSearch: true })) || res;
-      } catch (err) {
-        const c = await caches.open(CACHE);
-        return (await c.match(req, { ignoreSearch: true })) ||
-               new Response('{"latestVersion":"0.0.0","announcements":[]}', { headers: { 'Content-Type': 'application/json; charset=utf-8' } });
       }
     })());
     return;

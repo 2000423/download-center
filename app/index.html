@@ -182,7 +182,6 @@
   .confirm-row { display: flex; gap: 14px; }
   .c-btn { flex: 1; padding: 13px 0; border-radius: 999px; font-size: 14px; color: #cfeaff; cursor: pointer; text-align: center; }
   .c-btn.danger { background: rgba(255,80,100,.22); border: 1px solid rgba(255,80,100,.55); color: #ff8f9f; }
-  #updNow { background: linear-gradient(90deg, #00e5ff, #7b5cff); color: #06121f; font-weight: 700; box-shadow: 0 0 24px rgba(0,229,255,.35); }
   .earn-tail { display: inline-block; font-size: .52em; color: #9be9ff; opacity: .9; letter-spacing: 1px; font-variant-numeric: tabular-nums; font-feature-settings: 'tnum' 1; }
 
   /* ===== 红点（新版本 / 未读公告） ===== */
@@ -239,12 +238,6 @@
     background: rgba(0,229,255,.16); border: 1px solid rgba(0,229,255,.4); color: #5df0ff;
   }
 
-  /* ===== 更新弹窗说明 ===== */
-  .upd-notes {
-    text-align: left; margin: 0 0 20px; font-size: 12.5px; line-height: 1.9;
-    color: rgba(232,246,255,.72); max-height: 34vh; overflow-y: auto;
-  }
-  .upd-notes li { margin-left: 16px; }
 </style>
 </head>
 <body>
@@ -334,7 +327,7 @@
       <div class="hint">数据仅保存在本机 · 每天凌晨自动重新计算 · 完全离线运行</div>
     </div>
 
-    <!-- 公告与更新 -->
+    <!-- 公告 -->
     <div class="panel glass-strong" style="padding:6px 20px; margin-top:14px;">
       <div class="setting-row" id="rowAnnounce">
         <div class="row-left">
@@ -345,17 +338,6 @@
           </div>
         </div>
         <div class="row-right"><span class="dot" id="annRowDot"></span><span class="row-arrow">›</span></div>
-      </div>
-      <div class="row-divider"></div>
-      <div class="setting-row" id="rowUpdate">
-        <div class="row-left">
-          <span class="row-ico">⟳</span>
-          <div>
-            <div class="row-title">检查更新</div>
-            <div class="row-sub" id="updSub">当前版本 v1.1.0</div>
-          </div>
-        </div>
-        <div class="row-right"><span class="dot" id="updDot"></span><span class="row-arrow">›</span></div>
       </div>
     </div>
   </div>
@@ -382,19 +364,6 @@
     </div>
     <div class="ann-list" id="annList"></div>
     <div class="c-btn glass" id="annOk" style="margin-top:16px;padding:12px 0">知道了</div>
-  </div>
-</div>
-
-<!-- 发现新版本 -->
-<div class="mask" id="updMask">
-  <div class="confirm glass-strong">
-    <div class="confirm-title neon-cyan">发现新版本</div>
-    <div class="confirm-sub" id="updVer">v1.1.0</div>
-    <ul class="upd-notes" id="updNotes"></ul>
-    <div class="confirm-row">
-      <div class="c-btn glass" id="updLater">稍后</div>
-      <div class="c-btn" id="updNow">立即更新</div>
-    </div>
   </div>
 </div>
 
@@ -698,34 +667,15 @@ function showToast(msg) {
   }
 })();
 
-/* ===== 公告 & 检查更新 ===== */
-const APP_VERSION = '1.1.1';              /* 当前 App 版本：发新版时改这里 */
-const META_URL = 'app-meta.json';         /* 远端元数据（公告 + 最新版本号） */
-const META_CACHE_KEY = 'salary_meta_cache';
+/* ===== 公告（数据源在 GitHub，网页上改完即生效） ===== */
 /* 公告的 GitHub 数据源：可直接在 github.com 网页上编辑该文件，无需发版 */
 const ANN_REMOTE_URL = 'https://2000423.github.io/download-center/announcements.json';
+const ANN_CACHE_KEY = 'salary_ann_cache';
 const ANN_READ_KEY = 'salary_ann_read';
-const AUTO_CHECK_GAP = 5 * 60 * 1000;     /* 后台自动检查的最小间隔 */
 
-let meta = null;          /* 远端元数据 */
-let lastCheckAt = 0;      /* 上次检查时间 */
+let anns = [];            /* 当前公告列表 */
 
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-/* 语义化版本比较：a>b 返回 1，a<b 返回 -1 */
-function cmpVer(a, b) {
-  const pa = String(a || '0').split('.'), pb = String(b || '0').split('.');
-  for (let i = 0; i < 3; i++) {
-    const d = (parseInt(pa[i], 10) || 0) - (parseInt(pb[i], 10) || 0);
-    if (d) return d > 0 ? 1 : -1;
-  }
-  return 0;
-}
-/* 站点访问码：静态资源需要带上才能通过网关 */
-function sharecode() {
-  const m = location.search.match(/[?&]sharecode=([^&]+)/);
-  if (m) { try { sessionStorage.setItem('sharecode', m[1]); } catch (e) {} return m[1]; }
-  try { return sessionStorage.getItem('sharecode') || ''; } catch (e) { return ''; }
-}
 
 function readAnnRead() {
   try { const v = JSON.parse(localStorage.getItem(ANN_READ_KEY)); return Array.isArray(v) ? v : []; } catch (e) { return []; }
@@ -737,51 +687,26 @@ function markAnnRead(ids) {
     localStorage.setItem(ANN_READ_KEY, JSON.stringify(Array.from(set)));
   } catch (e) {}
 }
-const allAnns = () => (meta && Array.isArray(meta.announcements)) ? meta.announcements.filter(a => a && a.id) : [];
-const unreadAnns = () => { const r = readAnnRead(); return allAnns().filter(a => r.indexOf(a.id) < 0); };
-const hasNewVersion = () => !!meta && cmpVer(meta.latestVersion, APP_VERSION) > 0;
+const unreadAnns = () => { const r = readAnnRead(); return anns.filter(a => r.indexOf(a.id) < 0); };
 
-/* 依据元数据刷新：公告条 / 红点 / 副标题 */
-function applyMeta() {
-  const all = allAnns(), unread = unreadAnns(), newVer = hasNewVersion();
-  if (all.length) {
-    $('noticeText').textContent = all[0].title || '有新公告';
+/* 刷新公告条 / 红点 / 副标题 */
+function applyAnn() {
+  const unread = unreadAnns(), first = anns[0];
+  if (first) {
+    $('noticeText').textContent = first.title || '有新公告';
     $('noticeBar').style.display = 'flex';
   } else {
     $('noticeBar').style.display = 'none';
   }
   $('noticeDot').classList.toggle('show', unread.length > 0);
   $('annRowDot').classList.toggle('show', unread.length > 0);
-  $('updDot').classList.toggle('show', newVer);
-  $('setDot').classList.toggle('show', newVer || unread.length > 0);
-  $('annSub').textContent = all.length
-    ? ((all[0].date ? all[0].date + ' · ' : '') + (all[0].title || '公告'))
+  $('setDot').classList.toggle('show', unread.length > 0);
+  $('annSub').textContent = first
+    ? ((first.date ? first.date + ' · ' : '') + (first.title || '公告'))
     : '暂无公告';
-  const sub = $('updSub');
-  if (newVer) {
-    sub.textContent = '发现新版本 v' + meta.latestVersion + '，点击查看';
-    sub.style.color = '#5df0ff';
-  } else {
-    sub.textContent = '当前版本 v' + APP_VERSION + ' · 已是最新';
-    sub.style.color = '';
-  }
 }
 
-async function loadMeta() {
-  const sc = sharecode();
-  const url = META_URL + '?t=' + Date.now() + (sc ? '&sharecode=' + encodeURIComponent(sc) : '');
-  const res = await fetch(url, { cache: 'no-store' });
-  if (!res || !res.ok) throw new Error('HTTP ' + (res ? res.status : '0'));
-  const data = await res.json();
-  if (!data || !data.latestVersion) throw new Error('meta 格式错误');
-  meta = data;
-  try { localStorage.setItem(META_CACHE_KEY, JSON.stringify(data)); } catch (e) {}
-  applyMeta();
-  await loadRemoteAnns();   /* 公告以 GitHub 上的版本为准（可在网页直接改） */
-  return data;
-}
-
-/* 拉取 GitHub 上的公告：成功则覆盖本地公告；失败（断网/被墙/JSON 写错）保持原样，不影响 App */
+/* 拉取 GitHub 上的公告：成功则覆盖本地缓存；失败（断网/被墙/JSON 写错）保持上次内容，不影响 App */
 async function loadRemoteAnns() {
   let timer = null;
   try {
@@ -795,8 +720,8 @@ async function loadRemoteAnns() {
     if (!res || !res.ok) return false;
     const data = await res.json();
     const rawList = (data && Array.isArray(data.announcements)) ? data.announcements : null;
-    if (!rawList || !meta) return false;   /* 数组为空则视为“清空公告” */
-    const list = rawList
+    if (!rawList) return false;   /* 数组为空则视为“清空公告” */
+    anns = rawList
       .filter(a => a && a.id && a.title)
       .map(a => ({
         id: String(a.id),
@@ -805,9 +730,8 @@ async function loadRemoteAnns() {
         pinned: !!a.pinned,
         content: a.content ? String(a.content) : ''
       }));
-    meta.announcements = list;
-    try { localStorage.setItem(META_CACHE_KEY, JSON.stringify(meta)); } catch (e) {}
-    applyMeta();
+    try { localStorage.setItem(ANN_CACHE_KEY, JSON.stringify(anns)); } catch (e) {}
+    applyAnn();
     return true;
   } catch (e) {
     if (timer) clearTimeout(timer);
@@ -815,54 +739,30 @@ async function loadRemoteAnns() {
   }
 }
 
-/* 检查更新：manual=true 时给出可见反馈 */
-async function checkUpdate(manual) {
-  const sub = $('updSub');
-  if (manual) { sub.textContent = '正在检查…'; sub.style.color = ''; }
-  try {
-    await loadMeta();
-    lastCheckAt = Date.now();
-    if (hasNewVersion()) {
-      if (manual) showUpdateModal();
-      return true;
-    }
-    if (manual) showToast('已是最新版本 v' + APP_VERSION);
-    return false;
-  } catch (e) {
-    applyMeta();
-    if (manual) showToast(navigator.onLine === false ? '当前无网络，请联网后重试' : '检查失败，请稍后再试');
-    return false;
-  }
+/* ===== 自动更新 =====
+   页面导航本身是「网络优先」（sw.js 里 no-store），所以冷启动 / 手动刷新
+   一定能拿到 GitHub 上的最新代码，不需要版本号，也不需要点"检查更新"。
+   这里只补一个场景：App 被挂在后台很久，回前台时系统不会重新加载页面。 */
+const RELOAD_AFTER = 30 * 60 * 1000;   /* 后台超过 30 分钟，回前台自动切到最新版 */
+let hiddenAt = 0;
+
+/* 用户正在操作时不打断：弹窗开着、或停在设置页，就先不刷新 */
+function busyUI() {
+  if (document.querySelector('.mask.show')) return true;
+  const sv = $('settingsView');
+  return !!(sv && !sv.classList.contains('hidden-right'));
 }
 
-function showUpdateModal() {
-  $('updVer').textContent = 'v' + meta.latestVersion + (meta.releasedAt ? ' · ' + meta.releasedAt : '');
-  const notes = Array.isArray(meta.updateNotes) ? meta.updateNotes : [];
-  $('updNotes').innerHTML = notes.length
-    ? notes.map(n => '<li>' + esc(n) + '</li>').join('')
-    : '<li>细节优化与问题修复</li>';
-  $('updMask').classList.add('show');
-}
-
-/* 立即更新：清空离线缓存 + 触发 SW 更新，然后重新加载最新页面 */
-async function doUpdate() {
-  const btn = $('updNow');
-  btn.textContent = '正在更新…';
-  try {
-    if ('serviceWorker' in navigator) {
-      const reg = await navigator.serviceWorker.getRegistration();
-      if (reg) { try { await reg.update(); } catch (e) {} }
-    }
-    const keys = await caches.keys();
-    await Promise.all(keys.map(k => caches.delete(k)));
-  } catch (e) {}
-  location.reload();
-}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') { hiddenAt = Date.now(); return; }
+  const away = hiddenAt ? Date.now() - hiddenAt : 0;
+  hiddenAt = 0;
+  if (away > RELOAD_AFTER && !busyUI()) location.reload();
+});
 
 function openAnnouncements() {
-  const all = allAnns();
-  $('annList').innerHTML = all.length
-    ? all.map(a => `
+  $('annList').innerHTML = anns.length
+    ? anns.map(a => `
         <div class="ann-item">
           <div class="ann-row">
             ${a.pinned ? '<span class="ann-tag">置顶</span>' : ''}
@@ -873,25 +773,22 @@ function openAnnouncements() {
         </div>`).join('')
     : '<div style="text-align:center;padding:26px 0;font-size:13px;color:rgba(232,246,255,.45)">暂无公告</div>';
   $('annMask').classList.add('show');
-  markAnnRead(all.map(a => a.id));
-  applyMeta();
+  markAnnRead(anns.map(a => a.id));
+  applyAnn();
 }
 
 $('noticeBar').onclick = openAnnouncements;
 $('rowAnnounce').onclick = openAnnouncements;
 $('annClose').onclick = () => $('annMask').classList.remove('show');
 $('annOk').onclick = () => $('annMask').classList.remove('show');
-$('rowUpdate').onclick = () => checkUpdate(true);
-$('updLater').onclick = () => $('updMask').classList.remove('show');
-$('updNow').onclick = doUpdate;
 
-/* 启动：先用本地缓存立刻显示，再静默联网检查 */
-(function initMeta() {
-  try { const c = JSON.parse(localStorage.getItem(META_CACHE_KEY)); if (c && c.latestVersion) meta = c; } catch (e) {}
-  applyMeta();
-  setTimeout(() => checkUpdate(false), 400);
+/* 启动：先用本地缓存立刻显示，再静默联网刷新公告 */
+(function initAnn() {
+  try { const c = JSON.parse(localStorage.getItem(ANN_CACHE_KEY)); if (Array.isArray(c)) anns = c; } catch (e) {}
+  applyAnn();
+  setTimeout(loadRemoteAnns, 300);
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible' && Date.now() - lastCheckAt > AUTO_CHECK_GAP) checkUpdate(false);
+    if (document.visibilityState === 'visible') loadRemoteAnns();
   });
 })();
 
@@ -905,7 +802,7 @@ $('updNow').onclick = doUpdate;
   if (b) { b.style.transition = 'opacity .3s'; b.style.opacity = '0'; setTimeout(() => { b.style.display = 'none'; window.__booted = true; }, 320); }
 })();
 
-/* Service Worker 注册（离线可用 + 每次打开检查更新） */
+/* Service Worker 注册（离线可用 + 每次打开自动取最新页面） */
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' })

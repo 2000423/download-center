@@ -8,6 +8,16 @@
 - `files.json` — 文件清单：名称、版本、大小、说明、下载路径等展示属性
 - `files/` — 安装包本体（APK / EXE）
 - `announcements.json` — **App 内公告数据源**（见下）
+- `app/` — **工资监视器 App 本体**（PWA，GitHub Pages 直接托管）
+
+## App 在哪、怎么改
+
+- 访问地址：https://2000423.github.io/download-center/app/
+- 改代码：编辑 `app/index.html` → Commit → 约 1~2 分钟自动生效，**不需要任何构建或部署命令**
+- 改公告：编辑根目录 `announcements.json`（见下节）
+- 改版本提示：`app/index.html` 里的 `APP_VERSION` 与 `app/app-meta.json` 的 `latestVersion` **必须保持一致**，再在 `app/sw.js` 里把 `CACHE` 版本号 +1（清旧缓存）
+
+> 注意：HTTPS + 无访问码，任何拿到链接的人都能打开；数据只存在各自手机本地，无后端。
 
 ## 发布 / 修改 App 公告（手机也能改）
 

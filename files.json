@@ -6,25 +6,14 @@
     {
       "id": "salary-monitor",
       "name": "工资监视器",
-      "type": "apk",
-      "version": "1.0.1",
-      "size": "1.7 MB",
-      "date": "2026-10-27",
-      "tags": ["Android", "工具"],
-      "desc": "实时显示你此刻赚了多少钱。设置月薪和上下班时间后自动按北京时间计算，上班时金额实时跳动，HUD 科幻风格 + 磨砂玻璃质感，纯离线运行。v1.0.1：全屏独立运行（不再跳转浏览器）、金额精确到小数点后 4 位、每秒冲击动效。",
-      "file": "files/salary-monitor-v1.0.1.apk",
-      "install": "直接安装即可。若之前装过 1.0.0 版，请先卸载旧版再安装；若提示「未知来源应用」，允许即可。"
-    },
-    {
-      "id": "salary-monitor-ios",
-      "name": "工资监视器（iPhone 版）",
       "type": "web",
       "version": "1.0.1",
-      "size": "免安装",
+      "size": "免安装 · 全平台通用",
       "date": "2026-10-27",
-      "tags": ["iPhone", "免安装"],
-      "desc": "iPhone 无法安装 APK，请点下方按钮打开网页版 → 用 Safari 的「分享 → 添加到主屏幕」，即可像 App 一样全屏使用，功能与 Android 版完全一致。",
-      "file": "https://salary-monitor-app.app.workbuddy.host/?sharecode=IXGIAAOCCC"
+      "tags": ["iPhone", "Android", "全平台"],
+      "desc": "一个应用，任何手机都能用：实时显示你此刻赚了多少钱，按北京时间自动计算，上班时金额每秒跳动，HUD 科幻风格 + 磨砂玻璃质感，纯离线运行。安装方式：点下方按钮打开 → 在浏览器菜单里选「添加到主屏幕」，桌面即出现图标，像普通 App 一样全屏使用。",
+      "file": "https://salary-monitor-app.app.workbuddy.host/?sharecode=IXGIAAOCCC",
+      "apkMirror": "files/salary-monitor-v1.0.1.apk"
     }
   ]
 }

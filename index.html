@@ -81,11 +81,62 @@
   .empty { text-align: center; padding: 70px 0; color: rgba(232,246,255,.4); font-size: 14px; }
   .loading { text-align: center; padding: 70px 0; color: rgba(232,246,255,.4); font-size: 14px; }
 
+  /* ===== 选择系统弹窗 ===== */
+  .modal-mask {
+    position: fixed; inset: 0; z-index: 100; display: none;
+    background: rgba(3,4,12,.6);
+    -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+    align-items: center; justify-content: center; padding: 24px;
+  }
+  .modal-mask.show { display: flex; animation: fadeIn .22s ease; }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  .modal {
+    width: 100%; max-width: 420px;
+    background: rgba(20,28,58,.55);
+    -webkit-backdrop-filter: blur(30px) saturate(170%); backdrop-filter: blur(30px) saturate(170%);
+    border: 1px solid rgba(255,255,255,.16); border-radius: 26px;
+    padding: 28px 24px 22px;
+    box-shadow: 0 24px 70px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.12);
+    animation: popIn .28s cubic-bezier(.34,1.56,.64,1);
+  }
+  @keyframes popIn { from { transform: scale(.85) translateY(14px); opacity: 0; } to { transform: scale(1) translateY(0); opacity: 1; } }
+  .modal h3 { text-align: center; font-size: 18px; font-weight: 800; color: #e8f6ff; text-shadow: 0 0 14px rgba(93,240,255,.5); }
+  .modal .m-sub { text-align: center; margin-top: 6px; font-size: 12.5px; color: rgba(232,246,255,.5); }
+  .os-opt {
+    display: flex; align-items: center; gap: 14px; margin-top: 16px;
+    padding: 16px 18px; border-radius: 18px; cursor: pointer;
+    background: rgba(255,255,255,.05);
+    border: 1px solid rgba(255,255,255,.12);
+    transition: transform .15s, border-color .2s, background .2s;
+    -webkit-user-select: none; user-select: none;
+  }
+  .os-opt:hover { border-color: rgba(0,229,255,.45); background: rgba(0,229,255,.07); }
+  .os-opt:active { transform: scale(.97); }
+  .os-opt .os-ico {
+    flex: none; width: 46px; height: 46px; border-radius: 13px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 800; color: #06121f;
+  }
+  .os-opt.android .os-ico { background: linear-gradient(135deg, #00e5ff, #4d8bff); box-shadow: 0 0 18px rgba(0,229,255,.4); }
+  .os-opt.ios .os-ico { background: linear-gradient(135deg, #5df0ff, #7fe6a4); box-shadow: 0 0 18px rgba(127,230,164,.35); }
+  .os-opt .os-txt b { display: block; font-size: 15px; color: #e8f6ff; }
+  .os-opt .os-txt span { display: block; margin-top: 3px; font-size: 12px; color: rgba(232,246,255,.5); line-height: 1.5; }
+  .os-opt.recommend { border-color: rgba(0,229,255,.6); background: rgba(0,229,255,.09); }
+  .os-opt.recommend::after { content: '推荐'; margin-left: auto; font-size: 11px; padding: 3px 9px; border-radius: 999px; background: rgba(0,229,255,.16); border: 1px solid rgba(0,229,255,.5); color: #5df0ff; flex: none; }
+  .modal-cancel {
+    margin-top: 18px; width: 100%; padding: 12px; border-radius: 14px;
+    text-align: center; font-size: 14px; font-weight: 600; cursor: pointer;
+    color: rgba(232,246,255,.65); background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.12); transition: background .2s;
+    -webkit-user-select: none; user-select: none;
+  }
+  .modal-cancel:hover { background: rgba(255,255,255,.1); }
   @media (max-width: 560px) {
     .wrap { padding-top: 34px; }
-    .file-card { padding: 20px 18px; }
+    .file-card { padding: 20px 18px; cursor: pointer; }
     .icon { width: 54px; height: 54px; font-size: 20px; }
     .fname { font-size: 17px; }
+    .modal { padding: 24px 18px 18px; }
   }
 </style>
 </head>
@@ -112,7 +163,56 @@
     </footer>
   </div>
 
+  <!-- 选择系统弹窗 -->
+  <div class="modal-mask" id="modalMask">
+    <div class="modal" onclick="event.stopPropagation()">
+      <h3 id="modalName">选择你的手机系统</h3>
+      <div class="m-sub" id="modalSub">同一个应用，两种获取方式，功能完全一致</div>
+      <div class="os-opt android" id="optAndroid">
+        <div class="os-ico">安卓</div>
+        <div class="os-txt">
+          <b>Android 手机</b>
+          <span>下载 APK 安装包 → 点开安装，桌面出现独立 App 图标</span>
+        </div>
+      </div>
+      <div class="os-opt ios" id="optIos">
+        <div class="os-ico">iPhone</div>
+        <div class="os-txt">
+          <b>iPhone / iPad</b>
+          <span>打开网页版 → Safari「分享 → 添加到主屏幕」即可当 App 用</span>
+        </div>
+      </div>
+      <div class="modal-cancel" id="modalCancel">取消</div>
+    </div>
+  </div>
+
 <script>
+const APP_URLS = { web: '', apk: '' };
+
+function openModal(f) {
+  document.getElementById('modalName').textContent = f.name + ' · 选择系统';
+  APP_URLS.web = f.file;
+  APP_URLS.apk = f.apkMirror || '';
+  // 根据当前设备自动高亮推荐项
+  const ua = navigator.userAgent;
+  const isIos = /iPhone|iPad|iPod/i.test(ua);
+  const isAndroid = /Android/i.test(ua);
+  document.getElementById('optIos').classList.toggle('recommend', isIos);
+  document.getElementById('optAndroid').classList.toggle('recommend', isAndroid);
+  document.getElementById('modalMask').classList.add('show');
+}
+function closeModal() { document.getElementById('modalMask').classList.remove('show'); }
+document.getElementById('modalMask').addEventListener('click', closeModal);
+document.getElementById('modalCancel').addEventListener('click', closeModal);
+document.getElementById('optAndroid').addEventListener('click', () => {
+  if (APP_URLS.apk) { const a = document.createElement('a'); a.href = APP_URLS.apk; a.download = ''; a.click(); }
+  closeModal();
+});
+document.getElementById('optIos').addEventListener('click', () => {
+  if (APP_URLS.web) window.open(APP_URLS.web, '_blank');
+  closeModal();
+});
+
 fetch('files.json?t=' + Date.now())
   .then(r => r.json())
   .then(data => {
@@ -124,33 +224,31 @@ fetch('files.json?t=' + Date.now())
     document.getElementById('statVer').textContent = files.length ? files[0].version : '—';
     if (!files.length) { list.innerHTML = '<div class="empty">暂无文件，敬请期待</div>'; return; }
     list.innerHTML = files.map(f => {
-      const icon = f.type === 'exe' ? 'EXE' : f.type === 'web' ? 'APP' : 'APK';
-      const icls = f.type === 'exe' ? 'exe' : f.type === 'web' ? 'web' : '';
       const tags = (f.tags || []).map(t => `<span class="tag">${t}</span>`).join('');
-      const raw = `https://github.com/${data.owner}/${'download-center'}/raw/main/${f.file}`;
-      const osName = f.type === 'exe' ? 'Windows' : f.type === 'web' ? 'iPhone · Android · 全平台' : 'Android';
       return `
-      <div class="file-card">
-        <div class="icon ${icls}">${icon}</div>
+      <div class="file-card" data-id="${f.id}" style="cursor:pointer">
+        <div class="icon">APP</div>
         <div class="info">
           <div class="name-row">
             <span class="fname">${f.name}</span>
             <span class="ver">v${f.version}</span>
             ${tags}
           </div>
-          <div class="meta">${f.date} · ${f.size} · ${osName}</div>
+          <div class="meta">${f.date} · ${f.size} · Android &amp; iPhone</div>
           <div class="desc">${f.desc || ''}</div>
-          ${f.install ? `<div class="install-tip">📥 ${f.install}</div>` : ''}
           <div class="dl-row">
-            ${f.type === 'web'
-              ? `<a class="dl-btn" href="${f.file}" target="_blank">📱 安装到手机（全平台通用）</a>
-                 ${f.apkMirror ? `<span class="mirror">安卓备选：<a href="${f.apkMirror}" download>下载 APK</a></span>` : ''}`
-              : `<a class="dl-btn" href="${f.file}" download>⬇ 直接下载</a>
-            <span class="mirror">或 <a href="${raw}" target="_blank">GitHub 源</a></span>`}
+            <a class="dl-btn" href="javascript:void(0)">📲 获取应用</a>
           </div>
         </div>
       </div>`;
     }).join('');
+    // 点击卡片或按钮 → 弹出系统选择窗
+    document.querySelectorAll('.file-card').forEach(card => {
+      card.addEventListener('click', () => {
+        const f = files.find(x => x.id === card.dataset.id);
+        if (f) openModal(f);
+      });
+    });
   })
   .catch(() => {
     document.getElementById('list').innerHTML = '<div class="empty">加载失败，请刷新重试</div>';

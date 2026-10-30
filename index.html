@@ -371,6 +371,8 @@ const fbMsg = document.getElementById('fbMsg');
 const fbSubmit = document.getElementById('fbSubmit');
 
 function openFb() {
+  document.getElementById('fbEmail').value = '';
+  document.getElementById('fbText').value = '';
   fbMsg.textContent = '';
   fbMsg.className = 'fb-msg';
   fbSubmit.disabled = false;
@@ -407,8 +409,10 @@ fbSubmit.addEventListener('click', () => {
     })
   })
     .then(r => { if (!r.ok) throw new Error(); return r.json(); })
-    .then(() => {
+    .then(d => {
+      if (d && d.success === 'false') throw new Error(); // 未激活等情况，FormSubmit 返回 success:false
       fbTip('已发送，谢谢你的反馈！', 'ok');
+      document.getElementById('fbEmail').value = '';
       document.getElementById('fbText').value = '';
       setTimeout(closeFb, 1600);
     })

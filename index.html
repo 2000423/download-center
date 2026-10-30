@@ -33,6 +33,54 @@
   .stats { display: flex; justify-content: center; gap: 26px; margin-top: 18px; font-size: 12px; color: rgba(232,246,255,.4); }
   .stats b { color: #b39dff; font-size: 15px; margin-right: 4px; }
 
+  /* ===== 滚动入场动画 ===== */
+  .reveal { opacity: 0; transform: translateY(18px); transition: opacity .65s ease, transform .65s ease; }
+  .reveal.on { opacity: 1; transform: none; }
+  @media (prefers-reduced-motion: reduce) {
+    .reveal { opacity: 1; transform: none; transition: none; }
+  }
+
+  /* ===== 发布公告栏 ===== */
+  .release-section { margin-bottom: 34px; }
+  .release-sec-title {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 13px; font-weight: 700; letter-spacing: 1px;
+    color: rgba(232,246,255,.45); margin-bottom: 12px;
+  }
+  .release-sec-title::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, rgba(255,255,255,.14), transparent); }
+  .release-card {
+    background: rgba(255,255,255,.05);
+    border: 1px solid rgba(255,215,106,.2);
+    border-radius: 20px; padding: 6px 20px;
+  }
+  .release-item { display: flex; gap: 14px; padding: 15px 0; }
+  .release-item + .release-item { border-top: 1px dashed rgba(255,255,255,.09); }
+  .rel-date {
+    flex: none; width: 74px; padding-top: 2px;
+    font-size: 11.5px; font-variant-numeric: tabular-nums;
+    color: rgba(232,246,255,.4); letter-spacing: .3px;
+  }
+  .rel-main { flex: 1; min-width: 0; }
+  .rel-title { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .rel-t { font-size: 14.5px; font-weight: 700; color: #ffe9b3; }
+  .rel-ver {
+    flex: none; font-size: 10.5px; padding: 2px 8px; border-radius: 999px;
+    background: rgba(255,215,106,.14); border: 1px solid rgba(255,215,106,.45); color: #ffd76a;
+  }
+  .rel-new {
+    flex: none; font-size: 10px; padding: 2px 8px; border-radius: 999px;
+    background: linear-gradient(90deg, #00e5ff, #7b5cff); color: #06121f; font-weight: 800;
+  }
+  .rel-note {
+    margin-top: 6px; font-size: 12.5px; line-height: 1.75;
+    color: rgba(232,246,255,.6); white-space: pre-line;
+  }
+  @media (max-width: 560px) {
+    .release-card { padding: 4px 16px; }
+    .rel-date { width: 58px; font-size: 11px; }
+    .rel-t { font-size: 13.5px; }
+  }
+
   .file-card {
     background: rgba(255,255,255,.06);
     -webkit-backdrop-filter: blur(24px) saturate(160%); backdrop-filter: blur(24px) saturate(160%);
@@ -63,7 +111,7 @@
   .meta { margin-top: 7px; font-size: 12px; color: rgba(232,246,255,.45); }
   .desc { margin-top: 10px; font-size: 13.5px; line-height: 1.75; color: rgba(232,246,255,.75); }
   .install-tip { margin-top: 8px; font-size: 12px; color: rgba(255,215,106,.75); }
-  .dl-row { margin-top: 16px; display: flex; align-items: center; gap: 12px; }
+  .dl-row { margin-top: 16px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
   .dl-btn {
     display: inline-flex; align-items: center; gap: 8px;
     padding: 11px 26px; border-radius: 999px; font-size: 14px; font-weight: 700; color: #06121f;
@@ -75,8 +123,75 @@
   .mirror { font-size: 12px; color: rgba(232,246,255,.4); }
   .mirror a { color: rgba(93,240,255,.7); border-bottom: 1px dashed rgba(93,240,255,.4); }
 
+  /* ===== 版本更新日志 ===== */
+  .log-toggle {
+    margin-top: 14px; display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12.5px; font-weight: 600; color: rgba(179,157,255,.9); cursor: pointer;
+    padding: 6px 15px; border-radius: 999px;
+    background: rgba(140,110,255,.09); border: 1px solid rgba(140,110,255,.35);
+    transition: background .2s; -webkit-user-select: none; user-select: none;
+  }
+  .log-toggle:hover { background: rgba(140,110,255,.18); }
+  .log-toggle .arr { display: inline-block; transition: transform .25s; font-size: 10px; }
+  .log-toggle.open .arr { transform: rotate(180deg); }
+  .log-box { display: none; margin-top: 14px; border-top: 1px dashed rgba(255,255,255,.16); padding-top: 14px; }
+  .log-box.open { display: block; animation: logIn .3s ease; }
+  @keyframes logIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+  .log-item { display: flex; gap: 12px; }
+  .log-item + .log-item { margin-top: 13px; }
+  .log-ver {
+    flex: none; height: fit-content; font-size: 11px; padding: 3px 9px; border-radius: 999px;
+    background: rgba(0,229,255,.12); border: 1px solid rgba(0,229,255,.4); color: #5df0ff;
+  }
+  .log-info { flex: 1; min-width: 0; }
+  .log-date { font-size: 11px; color: rgba(232,246,255,.35); margin-bottom: 4px; }
+  .log-info ul { list-style: none; }
+  .log-info li { position: relative; padding-left: 14px; font-size: 12.5px; line-height: 1.7; color: rgba(232,246,255,.6); }
+  .log-info li + li { margin-top: 2px; }
+  .log-info li::before {
+    content: ''; position: absolute; left: 2px; top: 9px;
+    width: 5px; height: 5px; border-radius: 50%; background: rgba(93,240,255,.55);
+  }
+
   footer { margin-top: 50px; text-align: center; font-size: 12px; color: rgba(232,246,255,.3); line-height: 2; }
   footer a { color: rgba(93,240,255,.55); }
+  .fb-btn {
+    display: inline-flex; align-items: center; gap: 7px;
+    margin-bottom: 14px; padding: 10px 24px; border-radius: 999px;
+    font-size: 13px; font-weight: 600; color: rgba(232,246,255,.8);
+    background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.15);
+    transition: border-color .2s, background .2s, transform .15s;
+    cursor: pointer;
+  }
+  .fb-btn:hover { border-color: rgba(0,229,255,.5); background: rgba(0,229,255,.08); transform: translateY(-1px); }
+
+  /* ===== 反馈表单弹窗 ===== */
+  .fb-field { margin-top: 16px; }
+  .fb-field label { display: block; font-size: 12px; color: rgba(232,246,255,.5); margin-bottom: 6px; }
+  .fb-field input, .fb-field textarea {
+    width: 100%; padding: 12px 14px; border-radius: 14px;
+    font-family: inherit; font-size: 14px; color: #e8f6ff;
+    background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.14);
+    outline: none; transition: border-color .2s, background .2s;
+    resize: none; -webkit-appearance: none;
+  }
+  .fb-field input:focus, .fb-field textarea:focus {
+    border-color: rgba(0,229,255,.55); background: rgba(0,229,255,.06);
+  }
+  .fb-field input::placeholder, .fb-field textarea::placeholder { color: rgba(232,246,255,.28); }
+  .fb-submit {
+    margin-top: 18px; width: 100%; padding: 13px; border-radius: 14px;
+    font-family: inherit; font-size: 14.5px; font-weight: 700; color: #06121f;
+    background: linear-gradient(90deg, #00e5ff, #7b5cff);
+    border: none; cursor: pointer; box-shadow: 0 0 24px rgba(0,229,255,.35);
+    transition: transform .15s, opacity .2s;
+  }
+  .fb-submit:hover { transform: translateY(-1px); }
+  .fb-submit:active { transform: scale(.98); }
+  .fb-submit:disabled { opacity: .55; cursor: default; transform: none; }
+  .fb-msg { margin-top: 10px; font-size: 12px; text-align: center; min-height: 16px; }
+  .fb-msg.err { color: #ff8a8a; }
+  .fb-msg.ok { color: #7fe6a4; }
 
   .empty { text-align: center; padding: 70px 0; color: rgba(232,246,255,.4); font-size: 14px; }
   .loading { text-align: center; padding: 70px 0; color: rgba(232,246,255,.4); font-size: 14px; }
@@ -134,7 +249,7 @@
   .modal-cancel:hover { background: rgba(255,255,255,.1); }
   @media (max-width: 560px) {
     .wrap { padding-top: 34px; }
-    .file-card { padding: 20px 18px; cursor: pointer; }
+    .file-card { padding: 20px 18px; }
     .icon { width: 54px; height: 54px; font-size: 20px; }
     .fname { font-size: 17px; }
     .modal { padding: 24px 18px 18px; }
@@ -156,9 +271,15 @@
       <div class="stats"><span><b id="statCount">0</b>个应用</span><span><b id="statVer">—</b>最新版本</span></div>
     </header>
 
+    <div id="releaseArea" class="release-section" style="display:none">
+      <div class="release-sec-title">📢 发布动态</div>
+      <div class="release-card reveal" id="releaseList"></div>
+    </div>
+
     <main id="list"><div class="loading">加载中…</div></main>
 
-    <footer>
+    <footer class="reveal">
+      <a class="fb-btn" id="fbBtn" href="javascript:void(0)">✉️ 反馈问题 / 提建议</a><br>
       所有文件均由本站作者本人上传 · 下载即表示你信任该文件<br>
       Powered by GitHub Pages
     </footer>
@@ -189,8 +310,33 @@
     </div>
   </div>
 
+  <!-- 反馈表单弹窗 -->
+  <div class="modal-mask" id="fbMask">
+    <div class="modal">
+      <h3>反馈问题 / 提建议</h3>
+      <div class="m-sub">留下你的邮箱，作者看到后直接回复你</div>
+      <div class="fb-field">
+        <label>你的邮箱</label>
+        <input id="fbEmail" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com">
+      </div>
+      <div class="fb-field">
+        <label>想说的话</label>
+        <textarea id="fbText" rows="5" placeholder="遇到的问题、想要的功能、随便聊聊……"></textarea>
+      </div>
+      <div class="fb-msg" id="fbMsg"></div>
+      <button class="fb-submit" id="fbSubmit">发送</button>
+      <div class="modal-cancel" id="fbCancel">取消</div>
+    </div>
+  </div>
+
 <script>
 const APP_URLS = { web: '', apk: '' };
+
+/* ===== 滚动入场动画 ===== */
+const io = new IntersectionObserver(entries => {
+  entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('on'); io.unobserve(e.target); } });
+}, { threshold: .08 });
+function watchReveals() { document.querySelectorAll('.reveal:not(.on)').forEach(el => io.observe(el)); }
 
 function openModal(f) {
   document.getElementById('modalName').textContent = f.name + ' · 选择系统';
@@ -205,7 +351,7 @@ function openModal(f) {
   document.getElementById('modalMask').classList.add('show');
 }
 function closeModal() { document.getElementById('modalMask').classList.remove('show'); }
-document.getElementById('modalMask').addEventListener('click', closeModal);
+// 只有「取消」按钮能关闭，点遮罩/卡片不触发
 document.getElementById('modalCancel').addEventListener('click', closeModal);
 document.getElementById('optAndroid').addEventListener('click', () => {
   if (APP_URLS.apk) { const a = document.createElement('a'); a.href = APP_URLS.apk; a.download = ''; a.click(); }
@@ -215,6 +361,102 @@ document.getElementById('optIos').addEventListener('click', () => {
   if (APP_URLS.web) window.open(APP_URLS.web, '_blank');
   closeModal();
 });
+
+/* ===== 反馈表单：填写后直投作者邮箱 ===== */
+const OWNER_MAIL = '3484295527@qq.com';
+const fbMask = document.getElementById('fbMask');
+const fbMsg = document.getElementById('fbMsg');
+const fbSubmit = document.getElementById('fbSubmit');
+
+function openFb() {
+  fbMsg.textContent = '';
+  fbMsg.className = 'fb-msg';
+  fbSubmit.disabled = false;
+  fbSubmit.textContent = '发送';
+  fbMask.classList.add('show');
+  setTimeout(() => document.getElementById('fbEmail').focus(), 180);
+}
+function closeFb() { fbMask.classList.remove('show'); }
+document.getElementById('fbBtn').addEventListener('click', openFb);
+document.getElementById('fbCancel').addEventListener('click', closeFb);
+
+function fbTip(text, type) { fbMsg.textContent = text; fbMsg.className = 'fb-msg ' + (type || ''); }
+
+fbSubmit.addEventListener('click', () => {
+  const email = document.getElementById('fbEmail').value.trim();
+  const text = document.getElementById('fbText').value.trim();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { fbTip('请填写正确的邮箱地址', 'err'); return; }
+  if (text.length < 2) { fbTip('内容太短了，再多写几个字吧', 'err'); return; }
+
+  fbSubmit.disabled = true;
+  fbSubmit.textContent = '发送中…';
+  fbTip('');
+
+  fetch('https://formsubmit.co/ajax/' + OWNER_MAIL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+    body: JSON.stringify({
+      '对方邮箱': email,
+      '反馈内容': text,
+      '页面': location.href,
+      '_subject': '【下载页反馈】' + email,
+      '_template': 'table',
+      '_captcha': 'false'
+    })
+  })
+    .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+    .then(() => {
+      fbTip('已发送，谢谢你的反馈！', 'ok');
+      document.getElementById('fbText').value = '';
+      setTimeout(closeFb, 1600);
+    })
+    .catch(() => {
+      // 发送失败时退回邮件客户端
+      const href = 'mailto:' + OWNER_MAIL
+        + '?subject=' + encodeURIComponent('【下载页反馈】' + email)
+        + '&body=' + encodeURIComponent('我的邮箱：' + email + '\n\n' + text);
+      fbTip('发送未成功，已为你打开邮箱客户端，直接发送即可', 'err');
+      window.location.href = href;
+      fbSubmit.disabled = false;
+      fbSubmit.textContent = '发送';
+    });
+});
+
+/* ===== 更新日志展开 / 收起（阻止冒泡，避免触发下载弹窗）===== */
+document.addEventListener('click', e => {
+  const t = e.target.closest('.log-toggle');
+  if (t) {
+    e.stopPropagation();
+    t.classList.toggle('open');
+    const box = t.parentElement.querySelector('.log-box');
+    if (box) box.classList.toggle('open');
+  }
+});
+
+/* ===== 发布公告栏：什么时候发布了什么产品 ===== */
+fetch('releases.json?t=' + Date.now())
+  .then(r => r.ok ? r.json() : Promise.reject())
+  .then(data => {
+    const list = (data && data.releases) || [];
+    if (!list.length) return;
+    const area = document.getElementById('releaseArea');
+    const box = document.getElementById('releaseList');
+    box.innerHTML = list.map((r, i) => `
+      <div class="release-item">
+        <div class="rel-date">${r.date || ''}</div>
+        <div class="rel-main">
+          <div class="rel-title">
+            <span class="rel-t">${r.product || ''}${r.version ? ' ' : ''}</span>
+            ${r.version ? `<span class="rel-ver">v${r.version}</span>` : ''}
+            ${i === 0 ? '<span class="rel-new">最新</span>' : ''}
+          </div>
+          ${r.note ? `<div class="rel-note">${r.note}</div>` : ''}
+        </div>
+      </div>`).join('');
+    area.style.display = '';
+    watchReveals();
+  })
+  .catch(() => {}); // 公告拉取失败不影响下载页主体
 
 fetch('files.json?t=' + Date.now())
   .then(r => r.json())
@@ -226,10 +468,17 @@ fetch('files.json?t=' + Date.now())
     document.getElementById('statCount').textContent = files.length;
     document.getElementById('statVer').textContent = files.length ? files[0].version : '—';
     if (!files.length) { list.innerHTML = '<div class="empty">暂无文件，敬请期待</div>'; return; }
-    list.innerHTML = files.map(f => {
+    list.innerHTML = files.map((f, i) => {
       const tags = (f.tags || []).map(t => `<span class="tag">${t}</span>`).join('');
+      const logs = (f.changelog || []).map(l => {
+        const notes = (l.notes || []).map(n => `<li>${n}</li>`).join('');
+        return `<div class="log-item"><span class="log-ver">v${l.version}</span><div class="log-info"><div class="log-date">${l.date || ''}</div><ul>${notes}</ul></div></div>`;
+      }).join('');
+      const logHtml = logs ? `
+        <span class="log-toggle">🕘 更新日志 <span class="arr">▼</span></span>
+        <div class="log-box">${logs}</div>` : '';
       return `
-      <div class="file-card" data-id="${f.id}" style="cursor:pointer">
+      <div class="file-card reveal" data-id="${f.id}" style="transition-delay:${Math.min(i * 90, 360)}ms">
         <div class="icon">APP</div>
         <div class="info">
           <div class="name-row">
@@ -239,19 +488,25 @@ fetch('files.json?t=' + Date.now())
           </div>
           <div class="meta">${f.date} · ${f.size} · Android &amp; iPhone</div>
           <div class="desc">${f.desc || ''}</div>
+          ${logHtml}
           <div class="dl-row">
             <a class="dl-btn" href="javascript:void(0)">📲 获取应用</a>
           </div>
         </div>
       </div>`;
     }).join('');
-    // 点击卡片或按钮 → 弹出系统选择窗
+    // 只有点「获取应用」按钮才弹出系统选择窗
     document.querySelectorAll('.file-card').forEach(card => {
-      card.addEventListener('click', () => {
+      const btn = card.querySelector('.dl-btn');
+      if (!btn) return;
+      btn.addEventListener('click', e => {
+        e.preventDefault();
+        e.stopPropagation();
         const f = files.find(x => x.id === card.dataset.id);
         if (f) openModal(f);
       });
     });
+    watchReveals();
   })
   .catch(() => {
     document.getElementById('list').innerHTML = '<div class="empty">加载失败，请刷新重试</div>';

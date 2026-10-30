@@ -13,7 +13,32 @@
       "tags": ["iPhone", "Android", "全平台"],
       "desc": "实时显示你此刻赚了多少钱，按北京时间自动计算，金额每秒滚动，HUD 科幻风格 + 磨砂玻璃质感，纯离线运行。适配多种系统导航模式，打开即最新版。点击「获取应用」后按手机系统选择获取方式：安卓下载 APK 安装，iPhone 打开网页版添加到主屏幕。",
       "file": "https://2000423.github.io/download-center/app/",
-      "apkMirror": "files/salary-monitor-v1.1.3.apk"
+      "apkMirror": "files/salary-monitor-v1.1.3.apk",
+      "changelog": [
+        {
+          "version": "1.1.3",
+          "date": "2026-10-27",
+          "notes": [
+            "安卓 APK 壳内地址改为 GitHub 主站，不再依赖备用站",
+            "更换应用签名，安卓老用户需卸载重装（详见公告）"
+          ]
+        },
+        {
+          "version": "1.1.2",
+          "date": "2026-10-27",
+          "notes": [
+            "版本更新改为全自动：每次打开直接使用最新版本",
+            "移除设置页的手动「检查更新」入口"
+          ]
+        },
+        {
+          "version": "1.0.1",
+          "date": "2026-10-27",
+          "notes": [
+            "首个公开版本：实时工资滚动显示，纯离线运行"
+          ]
+        }
+      ]
     }
   ]
 }

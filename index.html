@@ -6,14 +6,19 @@
 <meta name="theme-color" content="#050814">
 <title>应用下载中心</title>
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent;
+      -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none;
+      -webkit-touch-callout: none; }
   body {
     font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei", sans-serif;
     background: radial-gradient(ellipse at 50% -10%, #0d1638 0%, #050814 55%, #03040c 100%);
     color: #e8f6ff; min-height: 100vh;
     -webkit-user-select: none; user-select: none;
   }
-  .fb-field input, .fb-field textarea { -webkit-user-select: text; user-select: text; }
+  .fb-field input, .fb-field textarea {
+    -webkit-user-select: text !important; user-select: text !important;
+    -webkit-touch-callout: default;
+  }
   a { color: inherit; text-decoration: none; }
 
   .wrap { max-width: 720px; margin: 0 auto; padding: 48px 20px 80px; }

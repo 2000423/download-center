@@ -56,6 +56,11 @@
   }
   .field input:focus { border-color: rgba(0,229,255,.55); background: rgba(0,229,255,.06); }
   .field input::placeholder { color: rgba(232,246,255,.22); font-weight: 400; }
+  .field input[readonly] {
+    color: rgba(93,240,255,.85); font-weight: 700;
+    background: rgba(0,229,255,.05); border-style: dashed;
+    -webkit-user-select: none; user-select: none;
+  }
 
   .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
   .chip {
@@ -158,18 +163,28 @@
         <input id="salary" type="number" inputmode="decimal" placeholder="8000">
       </div>
       <div class="field">
-        <label>每月工作日</label>
-        <input id="days" type="number" inputmode="numeric" placeholder="22">
+        <label>当月休息（天）</label>
+        <input id="rest" type="number" inputmode="numeric" placeholder="8">
       </div>
     </div>
     <div class="row">
       <div class="field">
-        <label>每天工作（小时）</label>
-        <input id="hours" type="number" inputmode="decimal" placeholder="8">
+        <label>每天工作（自动推算）</label>
+        <input id="dailyHours" readonly placeholder="—">
       </div>
+      <div class="field">
+        <label>每月工作日（自动推算）</label>
+        <input id="workdays" readonly placeholder="—">
+      </div>
+    </div>
+    <div class="row">
       <div class="field">
         <label>上班时间</label>
         <input id="startAt" type="time" value="09:00">
+      </div>
+      <div class="field">
+        <label>下班时间</label>
+        <input id="endAt" type="time" value="18:00">
       </div>
     </div>
   </section>
@@ -223,8 +238,8 @@
   </section>
 
   <footer>
-    按你的月薪与工时估算，不含加班与通勤<br>
-    所有数据只存在这台设备上
+    每月工作日 = 当月天数 − 休息天数；每天工时 = 下班 − 上班（含午休）<br>
+    「赚够日期」按周末双休估算 · 所有数据只存在这台设备上
   </footer>
 </div>
 
@@ -238,29 +253,58 @@ const store = {
 };
 
 const el = id => document.getElementById(id);
-const $salary = el('salary'), $days = el('days'), $hours = el('hours'), $startAt = el('startAt');
+const $salary = el('salary'), $rest = el('rest'), $dailyHours = el('dailyHours'), $workdays = el('workdays');
+const $startAt = el('startAt'), $endAt = el('endAt');
 const $name = el('itemName'), $price = el('price');
 const $hero = el('hero'), $heroSub = el('heroSub'), $hourlyTag = el('hourlyTag');
 const $fill = el('meterFill'), $left = el('meterLeft'), $right = el('meterRight');
 const $btnTimer = el('btnTimer'), $btnCopy = el('btnCopy'), $hist = el('history');
 
 /* ============ 初始化 ============ */
-const income = store.get('income', { salary: '', days: 22, hours: 8, startAt: '09:00' });
-$salary.value = income.salary; $days.value = income.days; $hours.value = income.hours; $startAt.value = income.startAt || '09:00';
+const income = store.get('income', { salary: '', rest: '', startAt: '09:00', endAt: '18:00' });
+$salary.value = income.salary; $rest.value = income.rest;
+$startAt.value = income.startAt || '09:00'; $endAt.value = income.endAt || '18:00';
 
-let history = store.get('history', []);
+// 「算过的」默认清空：只保留本次打开页面期间的记录
+let history = [];
+store.set('history', []);
 let timer = { running: false, raf: null, startedAt: 0, neededSec: 0, price: 0 };
 
 /* ============ 计算 ============ */
 function num(v) { const n = parseFloat(v); return isFinite(n) && n > 0 ? n : 0; }
 function money(n) { return n.toLocaleString('zh-CN', { maximumFractionDigits: 2 }); }
 
+function minutesOf(t) { const [h, m] = (t || '09:00').split(':').map(Number); return (h || 0) * 60 + (m || 0); }
+
+// 当月休息天数的合理默认值 = 本月周末天数
+function weekendDaysThisMonth() {
+  const now = new Date();
+  const total = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  let cnt = 0;
+  for (let d = 1; d <= total; d++) {
+    const w = new Date(now.getFullYear(), now.getMonth(), d).getDay();
+    if (w === 0 || w === 6) cnt++;
+  }
+  return cnt;
+}
+if (!income.rest) { $rest.value = weekendDaysThisMonth(); store.set('income', { ...income, rest: $rest.value }); }
+
 function getIncome() {
-  const salary = num($salary.value), days = num($days.value) || 22, hours = num($hours.value) || 8;
-  const dayPay = salary / days;          // 日薪
-  const hourly = dayPay / hours;         // 时薪
-  const perSec = hourly / 3600;          // 秒薪
-  return { salary, days, hours, dayPay, hourly, perSec, startAt: $startAt.value || '09:00' };
+  const salary = num($salary.value);
+  const monthDays = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
+  const rest = Math.max(0, Math.min(monthDays - 1, num($rest.value)));
+  const workdays = Math.max(0, monthDays - rest);      // 每月工作日 = 当月天数 − 休息天数
+  const dailyHours = Math.max(0, (minutesOf($endAt.value) - minutesOf($startAt.value)) / 60); // 每天工时 = 下班 − 上班
+  const dayPay = workdays ? salary / workdays : 0;     // 日薪
+  const hourly = dailyHours ? dayPay / dailyHours : 0; // 时薪
+  const perSec = hourly / 3600;                        // 秒薪
+  return { salary, monthDays, rest, workdays, dailyHours, dayPay, hourly, perSec, startAt: $startAt.value || '09:00' };
+}
+
+// 同步自动推算的两个框
+function syncAutoFields(inc) {
+  $dailyHours.value = inc.dailyHours ? inc.dailyHours.toFixed(1) : '—';
+  $workdays.value = inc.workdays ? inc.workdays + ' 天' : '—';
 }
 
 // 需要的工作秒数（按"纯工作时间"计）
@@ -272,7 +316,7 @@ function needSec(price, inc) {
 // 从当前时刻开始，按每天固定工作时长推进，算出"赚够"的日期时间
 function etaDate(startMs, workSec, inc) {
   const [sh, sm] = (inc.startAt || '09:00').split(':').map(Number);
-  const workMs = inc.hours * 3600 * 1000;
+  const workMs = inc.dailyHours * 3600 * 1000;
   let cursor = new Date(startMs);
   // 今天的工作起点与终点
   let dayStart = new Date(cursor); dayStart.setHours(sh, sm || 0, 0, 0);
@@ -320,7 +364,7 @@ function fmtDuration(sec) {
 
 // 展示口径：大于等于 1 个工作日时用「工作日 + 小时」，否则用小时/分钟
 function costLabel(need, inc) {
-  const perDay = inc.hours * 3600;
+  const perDay = inc.dailyHours * 3600;
   const wd = Math.floor(need / perDay);
   if (wd >= 1) {
     const remH = Math.floor((need % perDay) / 3600);
@@ -336,11 +380,14 @@ function costLabel(need, inc) {
 function render(updateHistory) {
   const inc = getIncome();
   const price = num($price.value);
+  syncAutoFields(inc);
   $hourlyTag.textContent = inc.hourly ? '时薪 ' + money(inc.hourly) + ' 元' : '时薪 —';
 
-  if (!inc.perSec || !price) {
+  if (!price || !inc.perSec) {
     $hero.textContent = '—';
-    $heroSub.textContent = '填好上面的数字，马上出结果';
+    $heroSub.textContent = !inc.dailyHours && (num($salary.value) || inc.workdays)
+      ? '下班时间要晚于上班时间哦'
+      : '填好上面的数字，马上出结果';
     $fill.style.width = '0%'; $left.textContent = '赚到 0 元'; $right.textContent = '0%';
     $btnTimer.disabled = true; $btnCopy.disabled = true;
     return;
@@ -350,7 +397,7 @@ function render(updateHistory) {
   const f = costLabel(need, inc);
   $hero.innerHTML = f.html;
 
-  const workDays = need / (inc.hours * 3600);
+  const workDays = need / (inc.dailyHours * 3600);
   const eta = etaDate(Date.now(), need, inc);
   const etaStr = (eta.getFullYear() !== new Date().getFullYear() ? eta.getFullYear() + '年' : '') +
     (eta.getMonth() + 1) + '月' + eta.getDate() + '日 ' +
@@ -444,10 +491,10 @@ function scheduleRender() {
   saveIncome();
 }
 function saveIncome() {
-  store.set('income', { salary: $salary.value, days: $days.value, hours: $hours.value, startAt: $startAt.value });
+  store.set('income', { salary: $salary.value, rest: $rest.value, startAt: $startAt.value, endAt: $endAt.value });
 }
 ['input', 'change'].forEach(ev => {
-  [$salary, $days, $hours, $startAt, $name, $price].forEach(inp => inp.addEventListener(ev, scheduleRender));
+  [$salary, $rest, $startAt, $endAt, $name, $price].forEach(inp => inp.addEventListener(ev, scheduleRender));
 });
 $price.addEventListener('change', () => render(true));
 $price.addEventListener('blur', () => render(true));

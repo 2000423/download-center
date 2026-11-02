@@ -193,13 +193,19 @@
   <section class="card">
     <div class="card-title"><span>② 你想要的东西</span></div>
     <div class="row">
+      <div class="field">
+        <label>现有存款（元）</label>
+        <input id="deposit" type="number" inputmode="decimal" placeholder="0">
+      </div>
+      <div class="field">
+        <label>目标价格（元）</label>
+        <input id="price" type="number" inputmode="decimal" placeholder="899">
+      </div>
+    </div>
+    <div class="row">
       <div class="field" style="flex:1.4">
         <label>叫什么（可不填）</label>
         <input id="itemName" type="text" placeholder="一双球鞋" maxlength="16">
-      </div>
-      <div class="field" style="flex:1">
-        <label>价格（元）</label>
-        <input id="price" type="number" inputmode="decimal" placeholder="899">
       </div>
     </div>
     <div class="chips" id="chips">
@@ -220,13 +226,12 @@
     <div class="meter">
       <div class="meter-bar"><div class="meter-fill" id="meterFill"></div></div>
       <div class="meter-info">
-        <span id="meterLeft">赚到 0 元</span>
+        <span id="meterLeft">现在可支出 0 元</span>
         <span id="meterRight">0%</span>
       </div>
     </div>
 
     <div class="btn-row">
-      <button class="btn" id="btnTimer">▶ 开始赚</button>
       <button class="btn ghost" id="btnCopy">复制文案</button>
     </div>
   </section>
@@ -239,7 +244,7 @@
 
   <footer>
     每月工作日 = 当月天数 − 休息天数；每天工时 = 下班 − 上班（含午休）<br>
-    「赚够日期」按周末双休估算 · 所有数据只存在这台设备上
+    进度条只在上班时间累积（周末双休）· 所有数据只存在这台设备上
   </footer>
 </div>
 
@@ -255,20 +260,19 @@ const store = {
 const el = id => document.getElementById(id);
 const $salary = el('salary'), $rest = el('rest'), $dailyHours = el('dailyHours'), $workdays = el('workdays');
 const $startAt = el('startAt'), $endAt = el('endAt');
-const $name = el('itemName'), $price = el('price');
+const $name = el('itemName'), $price = el('price'), $deposit = el('deposit');
 const $hero = el('hero'), $heroSub = el('heroSub'), $hourlyTag = el('hourlyTag');
 const $fill = el('meterFill'), $left = el('meterLeft'), $right = el('meterRight');
-const $btnTimer = el('btnTimer'), $btnCopy = el('btnCopy'), $hist = el('history');
+const $btnCopy = el('btnCopy'), $hist = el('history');
 
 /* ============ 初始化 ============ */
-const income = store.get('income', { salary: '', rest: '', startAt: '09:00', endAt: '18:00' });
-$salary.value = income.salary; $rest.value = income.rest;
+const income = store.get('income', { salary: '', rest: '', startAt: '09:00', endAt: '18:00', deposit: '' });
+$salary.value = income.salary; $rest.value = income.rest; $deposit.value = income.deposit || '';
 $startAt.value = income.startAt || '09:00'; $endAt.value = income.endAt || '18:00';
 
 // 「算过的」默认清空：只保留本次打开页面期间的记录
 let history = [];
 store.set('history', []);
-let timer = { running: false, raf: null, startedAt: 0, neededSec: 0, price: 0 };
 
 /* ============ 计算 ============ */
 function num(v) { const n = parseFloat(v); return isFinite(n) && n > 0 ? n : 0; }
@@ -388,8 +392,8 @@ function render(updateHistory) {
     $heroSub.textContent = !inc.dailyHours && (num($salary.value) || inc.workdays)
       ? '下班时间要晚于上班时间哦'
       : '填好上面的数字，马上出结果';
-    $fill.style.width = '0%'; $left.textContent = '赚到 0 元'; $right.textContent = '0%';
-    $btnTimer.disabled = true; $btnCopy.disabled = true;
+    $fill.style.width = '0%'; $left.textContent = '现在可支出 0 元'; $right.textContent = '0%';
+    $btnCopy.disabled = true;
     return;
   }
 
@@ -408,49 +412,41 @@ function render(updateHistory) {
     `折合 <b>${workDays.toFixed(1)}</b> 个工作日 ｜ 占月薪 <b>${pctOfMonth.toFixed(1)}%</b><br>` +
     `从现在开始不停干活，要到 <b>${etaStr}</b> 才能买下`;
 
-  $btnTimer.disabled = false; $btnCopy.disabled = false;
-
-  if (!timer.running) {
-    $fill.style.width = '0%';
-    $left.textContent = '目标 ' + money(price) + ' 元';
-    $right.textContent = '0%';
-  }
+  $btnCopy.disabled = false;
 
   if (updateHistory) pushHistory(price, need, inc);
+  // 进度条由实时循环驱动，这里不重置
 }
 
-/* ============ 计时 ============ */
-function startTimer() {
-  const inc = getIncome(), price = num($price.value);
-  if (!inc.perSec || !price) return;
-  timer.running = true;
-  timer.startedAt = Date.now();
-  timer.neededSec = needSec(price, inc);
-  timer.price = price;
-  timer.perSec = inc.perSec;
-  $btnTimer.textContent = '⏸ 暂停';
-  tick();
+/* ============ 实时进度：存款 + 上班时间内的工资累积 ============ */
+let accruedSec = 0;          // 本次打开页面期间、处于工作时段的累积秒数
+let lastTick = Date.now();
+
+function inWorkNow(d, inc) {
+  const wd = d.getDay();                       // 周末双休
+  const mins = d.getHours() * 60 + d.getMinutes();
+  return wd >= 1 && wd <= 5 &&
+    mins >= minutesOf(inc.startAt) && mins <= minutesOf(inc.endAt);
 }
-function stopTimer() {
-  timer.running = false;
-  if (timer.raf) cancelAnimationFrame(timer.raf);
-  $btnTimer.textContent = '▶ 继续赚';
-}
-function tick() {
-  if (!timer.running) return;
-  const elapsed = (Date.now() - timer.startedAt) / 1000;
-  const earned = Math.min(timer.price, elapsed * timer.perSec);
-  const pct = Math.min(100, earned / timer.price * 100);
-  $fill.style.width = pct.toFixed(2) + '%';
-  $left.textContent = '赚到 ' + money(earned) + ' 元';
-  $right.textContent = pct.toFixed(1) + '%';
-  if (pct >= 100) {
-    $btnTimer.textContent = '🎉 已赚够';
-    timer.running = false;
-    return;
+
+function loop() {
+  const inc = getIncome();
+  const price = num($price.value);
+  const now = Date.now();
+  const dt = Math.min(5, (now - lastTick) / 1000); // 切后台回来不一次性补一大截
+  lastTick = now;
+
+  if (inc.perSec && price) {
+    if (inWorkNow(new Date(), inc)) accruedSec += dt;
+    const spendable = num($deposit.value) + accruedSec * inc.perSec;
+    const pct = Math.min(100, spendable / price * 100);
+    $fill.style.width = pct.toFixed(2) + '%';
+    $left.textContent = '现在可支出 ' + money(spendable) + ' 元';
+    $right.textContent = pct >= 100 ? '🎉 买得起！' : pct.toFixed(1) + '%';
   }
-  timer.raf = requestAnimationFrame(tick);
+  requestAnimationFrame(loop);
 }
+requestAnimationFrame(loop);
 
 /* ============ 历史 ============ */
 function pushHistory(price, need, inc) {
@@ -491,10 +487,10 @@ function scheduleRender() {
   saveIncome();
 }
 function saveIncome() {
-  store.set('income', { salary: $salary.value, rest: $rest.value, startAt: $startAt.value, endAt: $endAt.value });
+  store.set('income', { salary: $salary.value, rest: $rest.value, startAt: $startAt.value, endAt: $endAt.value, deposit: $deposit.value });
 }
 ['input', 'change'].forEach(ev => {
-  [$salary, $rest, $startAt, $endAt, $name, $price].forEach(inp => inp.addEventListener(ev, scheduleRender));
+  [$salary, $rest, $startAt, $endAt, $name, $price, $deposit].forEach(inp => inp.addEventListener(ev, scheduleRender));
 });
 $price.addEventListener('change', () => render(true));
 $price.addEventListener('blur', () => render(true));
@@ -505,15 +501,6 @@ document.querySelectorAll('.chip').forEach(chip => {
     $name.value = chip.dataset.name;
     render(true);
   });
-});
-
-$btnTimer.addEventListener('click', () => {
-  if (timer.running) stopTimer();
-  else {
-    // 从 0 开始重新计时（简单直接）
-    $fill.style.width = '0%';
-    startTimer();
-  }
 });
 
 $btnCopy.addEventListener('click', async () => {

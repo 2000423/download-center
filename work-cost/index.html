@@ -169,22 +169,12 @@
     </div>
     <div class="row">
       <div class="field">
-        <label>每天工作（自动推算）</label>
-        <input id="dailyHours" readonly placeholder="—">
+        <label>每天工作（小时）</label>
+        <input id="hours" type="number" inputmode="decimal" placeholder="8">
       </div>
       <div class="field">
         <label>每月工作日（自动推算）</label>
         <input id="workdays" readonly placeholder="—">
-      </div>
-    </div>
-    <div class="row">
-      <div class="field">
-        <label>上班时间</label>
-        <input id="startAt" type="time" value="09:00">
-      </div>
-      <div class="field">
-        <label>下班时间</label>
-        <input id="endAt" type="time" value="18:00">
       </div>
     </div>
   </section>
@@ -194,7 +184,7 @@
     <div class="card-title"><span>② 你想要的东西</span></div>
     <div class="row">
       <div class="field">
-        <label>现有存款（元）</label>
+        <label>现在为该物品可支出金额（元）</label>
         <input id="deposit" type="number" inputmode="decimal" placeholder="0">
       </div>
       <div class="field">
@@ -243,8 +233,8 @@
   </section>
 
   <footer>
-    每月工作日 = 当月天数 − 休息天数；每天工时 = 下班 − 上班（含午休）<br>
-    进度条只在上班时间累积（周末双休）· 所有数据只存在这台设备上
+    每月工作日 = 当月天数 − 休息天数 · 进度条实时累积工资<br>
+    所有数据只存在这台设备上
   </footer>
 </div>
 
@@ -258,17 +248,16 @@ const store = {
 };
 
 const el = id => document.getElementById(id);
-const $salary = el('salary'), $rest = el('rest'), $dailyHours = el('dailyHours'), $workdays = el('workdays');
-const $startAt = el('startAt'), $endAt = el('endAt');
+const $salary = el('salary'), $rest = el('rest'), $hours = el('hours'), $workdays = el('workdays');
 const $name = el('itemName'), $price = el('price'), $deposit = el('deposit');
 const $hero = el('hero'), $heroSub = el('heroSub'), $hourlyTag = el('hourlyTag');
 const $fill = el('meterFill'), $left = el('meterLeft'), $right = el('meterRight');
 const $btnCopy = el('btnCopy'), $hist = el('history');
 
 /* ============ 初始化 ============ */
-const income = store.get('income', { salary: '', rest: '', startAt: '09:00', endAt: '18:00', deposit: '' });
-$salary.value = income.salary; $rest.value = income.rest; $deposit.value = income.deposit || '';
-$startAt.value = income.startAt || '09:00'; $endAt.value = income.endAt || '18:00';
+const income = store.get('income', { salary: '', rest: '', hours: 8, deposit: '' });
+$salary.value = income.salary; $rest.value = income.rest;
+$hours.value = income.hours || 8; $deposit.value = income.deposit || '';
 
 // 「算过的」默认清空：只保留本次打开页面期间的记录
 let history = [];
@@ -277,8 +266,6 @@ store.set('history', []);
 /* ============ 计算 ============ */
 function num(v) { const n = parseFloat(v); return isFinite(n) && n > 0 ? n : 0; }
 function money(n) { return n.toLocaleString('zh-CN', { maximumFractionDigits: 2 }); }
-
-function minutesOf(t) { const [h, m] = (t || '09:00').split(':').map(Number); return (h || 0) * 60 + (m || 0); }
 
 // 当月休息天数的合理默认值 = 本月周末天数
 function weekendDaysThisMonth() {
@@ -298,16 +285,15 @@ function getIncome() {
   const monthDays = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
   const rest = Math.max(0, Math.min(monthDays - 1, num($rest.value)));
   const workdays = Math.max(0, monthDays - rest);      // 每月工作日 = 当月天数 − 休息天数
-  const dailyHours = Math.max(0, (minutesOf($endAt.value) - minutesOf($startAt.value)) / 60); // 每天工时 = 下班 − 上班
+  const dailyHours = num($hours.value);                // 每天工时，用户自填
   const dayPay = workdays ? salary / workdays : 0;     // 日薪
   const hourly = dailyHours ? dayPay / dailyHours : 0; // 时薪
   const perSec = hourly / 3600;                        // 秒薪
-  return { salary, monthDays, rest, workdays, dailyHours, dayPay, hourly, perSec, startAt: $startAt.value || '09:00' };
+  return { salary, monthDays, rest, workdays, dailyHours, dayPay, hourly, perSec };
 }
 
-// 同步自动推算的两个框
+// 同步自动推算的框
 function syncAutoFields(inc) {
-  $dailyHours.value = inc.dailyHours ? inc.dailyHours.toFixed(1) : '—';
   $workdays.value = inc.workdays ? inc.workdays + ' 天' : '—';
 }
 
@@ -317,39 +303,9 @@ function needSec(price, inc) {
   return price / inc.perSec;
 }
 
-// 从当前时刻开始，按每天固定工作时长推进，算出"赚够"的日期时间
+// 从当前时刻开始不停工作，算出"赚够"的日期时间
 function etaDate(startMs, workSec, inc) {
-  const [sh, sm] = (inc.startAt || '09:00').split(':').map(Number);
-  const workMs = inc.dailyHours * 3600 * 1000;
-  let cursor = new Date(startMs);
-  // 今天的工作起点与终点
-  let dayStart = new Date(cursor); dayStart.setHours(sh, sm || 0, 0, 0);
-  let dayEnd = new Date(dayStart.getTime() + workMs);
-  let left = workSec * 1000;
-
-  // 今天还剩多少工作时间
-  let todayLeft = 0;
-  if (cursor < dayStart) todayLeft = workMs;
-  else if (cursor < dayEnd) todayLeft = dayEnd - cursor;
-
-  if (left <= todayLeft) return new Date(startMs + left);
-
-  left -= todayLeft;
-  let d = new Date(dayStart);
-  let guard = 0;
-  while (left > 0 && guard++ < 5000) {
-    d.setDate(d.getDate() + 1);
-    d.setHours(sh, sm || 0, 0, 0);
-    // 跳过周末（可选，让估算更贴近真实）
-    const wd = d.getDay();
-    if (wd === 0) d.setDate(d.getDate() + 1);
-    if (wd === 6) d.setDate(d.getDate() + 2);
-    d.setHours(sh, sm || 0, 0, 0);
-    const chunk = Math.min(left, workMs);
-    left -= chunk;
-    if (left <= 0) return new Date(d.getTime() + chunk);
-  }
-  return d;
+  return new Date(startMs + workSec * 1000);
 }
 
 function fmtDuration(sec) {
@@ -390,7 +346,7 @@ function render(updateHistory) {
   if (!price || !inc.perSec) {
     $hero.textContent = '—';
     $heroSub.textContent = !inc.dailyHours && (num($salary.value) || inc.workdays)
-      ? '下班时间要晚于上班时间哦'
+      ? '填一下每天工作几小时'
       : '填好上面的数字，马上出结果';
     $fill.style.width = '0%'; $left.textContent = '现在可支出 0 元'; $right.textContent = '0%';
     $btnCopy.disabled = true;
@@ -418,16 +374,9 @@ function render(updateHistory) {
   // 进度条由实时循环驱动，这里不重置
 }
 
-/* ============ 实时进度：存款 + 上班时间内的工资累积 ============ */
-let accruedSec = 0;          // 本次打开页面期间、处于工作时段的累积秒数
+/* ============ 实时进度：可支出金额 + 工资累积 ============ */
+let accruedSec = 0;          // 本次打开页面期间的累积秒数
 let lastTick = Date.now();
-
-function inWorkNow(d, inc) {
-  const wd = d.getDay();                       // 周末双休
-  const mins = d.getHours() * 60 + d.getMinutes();
-  return wd >= 1 && wd <= 5 &&
-    mins >= minutesOf(inc.startAt) && mins <= minutesOf(inc.endAt);
-}
 
 function loop() {
   const inc = getIncome();
@@ -437,7 +386,7 @@ function loop() {
   lastTick = now;
 
   if (inc.perSec && price) {
-    if (inWorkNow(new Date(), inc)) accruedSec += dt;
+    accruedSec += dt;
     const spendable = num($deposit.value) + accruedSec * inc.perSec;
     const pct = Math.min(100, spendable / price * 100);
     $fill.style.width = pct.toFixed(2) + '%';
@@ -487,10 +436,10 @@ function scheduleRender() {
   saveIncome();
 }
 function saveIncome() {
-  store.set('income', { salary: $salary.value, rest: $rest.value, startAt: $startAt.value, endAt: $endAt.value, deposit: $deposit.value });
+  store.set('income', { salary: $salary.value, rest: $rest.value, hours: $hours.value, deposit: $deposit.value });
 }
 ['input', 'change'].forEach(ev => {
-  [$salary, $rest, $startAt, $endAt, $name, $price, $deposit].forEach(inp => inp.addEventListener(ev, scheduleRender));
+  [$salary, $rest, $hours, $name, $price, $deposit].forEach(inp => inp.addEventListener(ev, scheduleRender));
 });
 $price.addEventListener('change', () => render(true));
 $price.addEventListener('blur', () => render(true));

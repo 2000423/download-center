@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#050814">
+<title>这东西要工作多久</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent;
+      -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei", sans-serif;
+    background: radial-gradient(ellipse at 50% -10%, #0d1638 0%, #050814 55%, #03040c 100%);
+    color: #e8f6ff; min-height: 100vh; padding-bottom: 40px;
+    -webkit-font-smoothing: antialiased;
+  }
+  input { -webkit-user-select: text; user-select: text; }
+
+  .wrap { max-width: 560px; margin: 0 auto; padding: 34px 18px 20px; }
+
+  header { text-align: center; margin-bottom: 26px; }
+  h1 {
+    font-size: 22px; font-weight: 800; letter-spacing: 1px; color: #5df0ff;
+    text-shadow: 0 0 16px rgba(93,240,255,.7), 0 0 46px rgba(93,240,255,.28);
+  }
+  .sub { margin-top: 8px; font-size: 12.5px; color: rgba(232,246,255,.45); letter-spacing: .5px; }
+
+  .card {
+    background: rgba(255,255,255,.055);
+    -webkit-backdrop-filter: blur(24px) saturate(160%); backdrop-filter: blur(24px) saturate(160%);
+    border: 1px solid rgba(255,255,255,.13); border-radius: 20px;
+    padding: 18px; margin-bottom: 14px;
+    box-shadow: 0 10px 34px rgba(0,0,0,.32);
+  }
+  .card-title {
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 12px; font-weight: 700; letter-spacing: 1.2px;
+    color: rgba(232,246,255,.45); margin-bottom: 14px;
+  }
+  .card-title .tag {
+    font-size: 10px; font-weight: 600; letter-spacing: .5px;
+    padding: 3px 9px; border-radius: 999px;
+    background: rgba(140,110,255,.14); border: 1px solid rgba(140,110,255,.4); color: #b39dff;
+  }
+
+  .row { display: flex; gap: 10px; }
+  .row + .row { margin-top: 10px; }
+  .field { flex: 1; min-width: 0; }
+  .field label { display: block; font-size: 11.5px; color: rgba(232,246,255,.42); margin-bottom: 6px; padding-left: 2px; }
+  .field input {
+    width: 100%; padding: 11px 13px; border-radius: 13px;
+    font-family: inherit; font-size: 15px; font-weight: 600; color: #e8f6ff;
+    background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.13);
+    outline: none; transition: border-color .2s, background .2s;
+    -webkit-appearance: none; appearance: none;
+  }
+  .field input:focus { border-color: rgba(0,229,255,.55); background: rgba(0,229,255,.06); }
+  .field input::placeholder { color: rgba(232,246,255,.22); font-weight: 400; }
+
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+  .chip {
+    font-size: 12px; padding: 6px 12px; border-radius: 999px; cursor: pointer;
+    background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.12);
+    color: rgba(232,246,255,.7); transition: all .18s;
+  }
+  .chip:hover { border-color: rgba(0,229,255,.45); color: #5df0ff; background: rgba(0,229,255,.07); }
+  .chip:active { transform: scale(.96); }
+
+  /* ===== 结果区 ===== */
+  .result-card {
+    background: linear-gradient(160deg, rgba(0,229,255,.1), rgba(123,92,255,.1) 60%, rgba(255,255,255,.04));
+    border: 1px solid rgba(93,240,255,.28);
+    box-shadow: 0 12px 44px rgba(0,120,255,.16), inset 0 1px 0 rgba(255,255,255,.1);
+  }
+  .hero-label { font-size: 12px; letter-spacing: 2px; color: rgba(232,246,255,.5); text-align: center; }
+  .hero {
+    margin-top: 10px; text-align: center;
+    font-size: 40px; font-weight: 900; letter-spacing: 1px; line-height: 1.15;
+    color: #5df0ff; text-shadow: 0 0 22px rgba(93,240,255,.6), 0 0 60px rgba(93,240,255,.25);
+    font-variant-numeric: tabular-nums;
+  }
+  .hero small { font-size: 17px; font-weight: 700; opacity: .75; margin: 0 3px; }
+  .hero-sub { margin-top: 10px; text-align: center; font-size: 12.5px; color: rgba(232,246,255,.55); line-height: 1.7; }
+  .hero-sub b { color: #ffe9b3; font-weight: 700; }
+
+  .meter { margin-top: 18px; }
+  .meter-bar {
+    height: 8px; border-radius: 999px; overflow: hidden;
+    background: rgba(255,255,255,.09);
+  }
+  .meter-fill {
+    height: 100%; width: 0%; border-radius: 999px;
+    background: linear-gradient(90deg, #00e5ff, #7b5cff);
+    box-shadow: 0 0 14px rgba(0,229,255,.6);
+    transition: width .35s ease;
+  }
+  .meter-info { display: flex; justify-content: space-between; margin-top: 7px; font-size: 11.5px; color: rgba(232,246,255,.45); font-variant-numeric: tabular-nums; }
+
+  .btn-row { display: flex; gap: 10px; margin-top: 16px; }
+  .btn {
+    flex: 1; padding: 12px; border-radius: 13px; border: none; cursor: pointer;
+    font-family: inherit; font-size: 14px; font-weight: 700; color: #06121f;
+    background: linear-gradient(90deg, #00e5ff, #7b5cff);
+    box-shadow: 0 0 24px rgba(0,229,255,.32); transition: transform .15s, opacity .2s;
+  }
+  .btn:active { transform: scale(.97); }
+  .btn.ghost {
+    color: rgba(232,246,255,.75); background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.14); box-shadow: none;
+  }
+  .btn:disabled { opacity: .45; }
+
+  /* ===== 历史 ===== */
+  .history-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 11px 0; border-top: 1px dashed rgba(255,255,255,.09);
+    font-size: 13px; cursor: pointer;
+  }
+  .history-item:first-of-type { border-top: none; }
+  .h-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: rgba(232,246,255,.8); }
+  .h-price { color: rgba(232,246,255,.4); font-variant-numeric: tabular-nums; font-size: 12px; }
+  .h-time { color: #5df0ff; font-weight: 700; font-size: 12px; font-variant-numeric: tabular-nums; }
+  .empty-hint { font-size: 12.5px; color: rgba(232,246,255,.3); text-align: center; padding: 8px 0; }
+
+  footer { margin-top: 22px; text-align: center; font-size: 11.5px; color: rgba(232,246,255,.25); line-height: 1.9; }
+
+  .toast {
+    position: fixed; left: 50%; bottom: 42px; transform: translate(-50%, 14px);
+    padding: 10px 20px; border-radius: 999px; font-size: 13px; font-weight: 600;
+    background: rgba(20,28,58,.9); border: 1px solid rgba(0,229,255,.4); color: #5df0ff;
+    opacity: 0; pointer-events: none; transition: all .28s cubic-bezier(.34,1.56,.64,1);
+    -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); z-index: 50;
+  }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+  @media (max-width: 380px) {
+    .hero { font-size: 33px; }
+    .hero small { font-size: 14px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>这东西要工作多久</h1>
+    <div class="sub">把你想要的东西，换算成时间</div>
+  </header>
+
+  <!-- 收入设置 -->
+  <section class="card">
+    <div class="card-title">
+      <span>① 你的收入</span>
+      <span class="tag" id="hourlyTag">时薪 —</span>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label>月薪（元）</label>
+        <input id="salary" type="number" inputmode="decimal" placeholder="8000">
+      </div>
+      <div class="field">
+        <label>每月工作日</label>
+        <input id="days" type="number" inputmode="numeric" placeholder="22">
+      </div>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label>每天工作（小时）</label>
+        <input id="hours" type="number" inputmode="decimal" placeholder="8">
+      </div>
+      <div class="field">
+        <label>上班时间</label>
+        <input id="startAt" type="time" value="09:00">
+      </div>
+    </div>
+  </section>
+
+  <!-- 想买的东西 -->
+  <section class="card">
+    <div class="card-title"><span>② 你想要的东西</span></div>
+    <div class="row">
+      <div class="field" style="flex:1.4">
+        <label>叫什么（可不填）</label>
+        <input id="itemName" type="text" placeholder="一双球鞋" maxlength="16">
+      </div>
+      <div class="field" style="flex:1">
+        <label>价格（元）</label>
+        <input id="price" type="number" inputmode="decimal" placeholder="899">
+      </div>
+    </div>
+    <div class="chips" id="chips">
+      <span class="chip" data-price="18" data-name="一杯奶茶">🥤 奶茶 18</span>
+      <span class="chip" data-price="35" data-name="一顿外卖">🍱 外卖 35</span>
+      <span class="chip" data-price="899" data-name="一双球鞋">👟 球鞋 899</span>
+      <span class="chip" data-price="3000" data-name="一个月房租">🏠 房租 3000</span>
+      <span class="chip" data-price="9999" data-name="一部新手机">📱 手机 9999</span>
+    </div>
+  </section>
+
+  <!-- 结果 -->
+  <section class="card result-card">
+    <div class="hero-label">你需要工作</div>
+    <div class="hero" id="hero">—</div>
+    <div class="hero-sub" id="heroSub">填好上面的数字，马上出结果</div>
+
+    <div class="meter">
+      <div class="meter-bar"><div class="meter-fill" id="meterFill"></div></div>
+      <div class="meter-info">
+        <span id="meterLeft">赚到 0 元</span>
+        <span id="meterRight">0%</span>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn" id="btnTimer">▶ 开始赚</button>
+      <button class="btn ghost" id="btnCopy">复制文案</button>
+    </div>
+  </section>
+
+  <!-- 历史 -->
+  <section class="card">
+    <div class="card-title"><span>算过的</span><span class="tag" id="clearHist" style="cursor:pointer">清空</span></div>
+    <div id="history"><div class="empty-hint">还没有记录</div></div>
+  </section>
+
+  <footer>
+    按你的月薪与工时估算，不含加班与通勤<br>
+    所有数据只存在这台设备上
+  </footer>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============ 存取 ============ */
+const store = {
+  get(k, d) { try { const v = localStorage.getItem('wc_' + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem('wc_' + k, JSON.stringify(v)); } catch (e) {} }
+};
+
+const el = id => document.getElementById(id);
+const $salary = el('salary'), $days = el('days'), $hours = el('hours'), $startAt = el('startAt');
+const $name = el('itemName'), $price = el('price');
+const $hero = el('hero'), $heroSub = el('heroSub'), $hourlyTag = el('hourlyTag');
+const $fill = el('meterFill'), $left = el('meterLeft'), $right = el('meterRight');
+const $btnTimer = el('btnTimer'), $btnCopy = el('btnCopy'), $hist = el('history');
+
+/* ============ 初始化 ============ */
+const income = store.get('income', { salary: '', days: 22, hours: 8, startAt: '09:00' });
+$salary.value = income.salary; $days.value = income.days; $hours.value = income.hours; $startAt.value = income.startAt || '09:00';
+
+let history = store.get('history', []);
+let timer = { running: false, raf: null, startedAt: 0, neededSec: 0, price: 0 };
+
+/* ============ 计算 ============ */
+function num(v) { const n = parseFloat(v); return isFinite(n) && n > 0 ? n : 0; }
+function money(n) { return n.toLocaleString('zh-CN', { maximumFractionDigits: 2 }); }
+
+function getIncome() {
+  const salary = num($salary.value), days = num($days.value) || 22, hours = num($hours.value) || 8;
+  const dayPay = salary / days;          // 日薪
+  const hourly = dayPay / hours;         // 时薪
+  const perSec = hourly / 3600;          // 秒薪
+  return { salary, days, hours, dayPay, hourly, perSec, startAt: $startAt.value || '09:00' };
+}
+
+// 需要的工作秒数（按"纯工作时间"计）
+function needSec(price, inc) {
+  if (!inc.perSec || !price) return 0;
+  return price / inc.perSec;
+}
+
+// 从当前时刻开始，按每天固定工作时长推进，算出"赚够"的日期时间
+function etaDate(startMs, workSec, inc) {
+  const [sh, sm] = (inc.startAt || '09:00').split(':').map(Number);
+  const workMs = inc.hours * 3600 * 1000;
+  let cursor = new Date(startMs);
+  // 今天的工作起点与终点
+  let dayStart = new Date(cursor); dayStart.setHours(sh, sm || 0, 0, 0);
+  let dayEnd = new Date(dayStart.getTime() + workMs);
+  let left = workSec * 1000;
+
+  // 今天还剩多少工作时间
+  let todayLeft = 0;
+  if (cursor < dayStart) todayLeft = workMs;
+  else if (cursor < dayEnd) todayLeft = dayEnd - cursor;
+
+  if (left <= todayLeft) return new Date(startMs + left);
+
+  left -= todayLeft;
+  let d = new Date(dayStart);
+  let guard = 0;
+  while (left > 0 && guard++ < 5000) {
+    d.setDate(d.getDate() + 1);
+    d.setHours(sh, sm || 0, 0, 0);
+    // 跳过周末（可选，让估算更贴近真实）
+    const wd = d.getDay();
+    if (wd === 0) d.setDate(d.getDate() + 1);
+    if (wd === 6) d.setDate(d.getDate() + 2);
+    d.setHours(sh, sm || 0, 0, 0);
+    const chunk = Math.min(left, workMs);
+    left -= chunk;
+    if (left <= 0) return new Date(d.getTime() + chunk);
+  }
+  return d;
+}
+
+function fmtDuration(sec) {
+  sec = Math.max(0, Math.round(sec));
+  const d = Math.floor(sec / 86400);
+  const h = Math.floor((sec % 86400) / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  let html = '';
+  const plain = [];
+  if (d > 0) { html += d + '<small>天</small>'; plain.push(d + '天'); }
+  if (d > 0 || h > 0) { html += h + '<small>小时</small>'; plain.push(h + '小时'); }
+  if (d === 0 && m > 0) { html += m + '<small>分</small>'; plain.push(m + '分'); }
+  if (!html) { html = sec + '<small>秒</small>'; plain.push(sec + '秒'); }
+  return { html, plain: plain.join('') };
+}
+
+// 展示口径：大于等于 1 个工作日时用「工作日 + 小时」，否则用小时/分钟
+function costLabel(need, inc) {
+  const perDay = inc.hours * 3600;
+  const wd = Math.floor(need / perDay);
+  if (wd >= 1) {
+    const remH = Math.floor((need % perDay) / 3600);
+    return {
+      html: wd + '<small>个工作日</small>' + (remH ? remH + '<small>小时</small>' : ''),
+      plain: wd + '个工作日' + (remH ? remH + '小时' : '')
+    };
+  }
+  const f = fmtDuration(need);
+  return f;
+}
+
+function render(updateHistory) {
+  const inc = getIncome();
+  const price = num($price.value);
+  $hourlyTag.textContent = inc.hourly ? '时薪 ' + money(inc.hourly) + ' 元' : '时薪 —';
+
+  if (!inc.perSec || !price) {
+    $hero.textContent = '—';
+    $heroSub.textContent = '填好上面的数字，马上出结果';
+    $fill.style.width = '0%'; $left.textContent = '赚到 0 元'; $right.textContent = '0%';
+    $btnTimer.disabled = true; $btnCopy.disabled = true;
+    return;
+  }
+
+  const need = needSec(price, inc);
+  const f = costLabel(need, inc);
+  $hero.innerHTML = f.html;
+
+  const workDays = need / (inc.hours * 3600);
+  const eta = etaDate(Date.now(), need, inc);
+  const etaStr = (eta.getFullYear() !== new Date().getFullYear() ? eta.getFullYear() + '年' : '') +
+    (eta.getMonth() + 1) + '月' + eta.getDate() + '日 ' +
+    String(eta.getHours()).padStart(2, '0') + ':' + String(eta.getMinutes()).padStart(2, '0');
+
+  const pctOfMonth = inc.salary ? (price / inc.salary * 100) : 0;
+  $heroSub.innerHTML =
+    `折合 <b>${workDays.toFixed(1)}</b> 个工作日 ｜ 占月薪 <b>${pctOfMonth.toFixed(1)}%</b><br>` +
+    `从现在开始不停干活，要到 <b>${etaStr}</b> 才能买下`;
+
+  $btnTimer.disabled = false; $btnCopy.disabled = false;
+
+  if (!timer.running) {
+    $fill.style.width = '0%';
+    $left.textContent = '目标 ' + money(price) + ' 元';
+    $right.textContent = '0%';
+  }
+
+  if (updateHistory) pushHistory(price, need, inc);
+}
+
+/* ============ 计时 ============ */
+function startTimer() {
+  const inc = getIncome(), price = num($price.value);
+  if (!inc.perSec || !price) return;
+  timer.running = true;
+  timer.startedAt = Date.now();
+  timer.neededSec = needSec(price, inc);
+  timer.price = price;
+  timer.perSec = inc.perSec;
+  $btnTimer.textContent = '⏸ 暂停';
+  tick();
+}
+function stopTimer() {
+  timer.running = false;
+  if (timer.raf) cancelAnimationFrame(timer.raf);
+  $btnTimer.textContent = '▶ 继续赚';
+}
+function tick() {
+  if (!timer.running) return;
+  const elapsed = (Date.now() - timer.startedAt) / 1000;
+  const earned = Math.min(timer.price, elapsed * timer.perSec);
+  const pct = Math.min(100, earned / timer.price * 100);
+  $fill.style.width = pct.toFixed(2) + '%';
+  $left.textContent = '赚到 ' + money(earned) + ' 元';
+  $right.textContent = pct.toFixed(1) + '%';
+  if (pct >= 100) {
+    $btnTimer.textContent = '🎉 已赚够';
+    timer.running = false;
+    return;
+  }
+  timer.raf = requestAnimationFrame(tick);
+}
+
+/* ============ 历史 ============ */
+function pushHistory(price, need, inc) {
+  const name = ($name.value || '').trim() || '一件 ' + money(price) + ' 元的东西';
+  const last = history[0];
+  if (last && last.name === name && last.price === price) return;
+  history.unshift({ name, price, need, at: Date.now() });
+  history = history.slice(0, 6);
+  store.set('history', history);
+  renderHistory();
+}
+function renderHistory() {
+  if (!history.length) { $hist.innerHTML = '<div class="empty-hint">还没有记录</div>'; return; }
+  const inc = getIncome();
+  $hist.innerHTML = history.map((h, i) => {
+    const t = costLabel(h.need, inc).plain;
+    return `<div class="history-item" data-i="${i}">
+      <span class="h-name">${h.name}</span>
+      <span class="h-price">${money(h.price)}元</span>
+      <span class="h-time">${t}</span>
+    </div>`;
+  }).join('');
+  $hist.querySelectorAll('.history-item').forEach(row => {
+    row.addEventListener('click', () => {
+      const h = history[+row.dataset.i];
+      $name.value = h.name; $price.value = h.price;
+      render(false);
+      toast('已回填「' + h.name + '」');
+    });
+  });
+}
+
+/* ============ 交互 ============ */
+let renderTimer = null;
+function scheduleRender() {
+  clearTimeout(renderTimer);
+  renderTimer = setTimeout(() => render(false), 160);
+  saveIncome();
+}
+function saveIncome() {
+  store.set('income', { salary: $salary.value, days: $days.value, hours: $hours.value, startAt: $startAt.value });
+}
+['input', 'change'].forEach(ev => {
+  [$salary, $days, $hours, $startAt, $name, $price].forEach(inp => inp.addEventListener(ev, scheduleRender));
+});
+$price.addEventListener('change', () => render(true));
+$price.addEventListener('blur', () => render(true));
+
+document.querySelectorAll('.chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    $price.value = chip.dataset.price;
+    $name.value = chip.dataset.name;
+    render(true);
+  });
+});
+
+$btnTimer.addEventListener('click', () => {
+  if (timer.running) stopTimer();
+  else {
+    // 从 0 开始重新计时（简单直接）
+    $fill.style.width = '0%';
+    startTimer();
+  }
+});
+
+$btnCopy.addEventListener('click', async () => {
+  const inc = getIncome(), price = num($price.value);
+  if (!inc.perSec || !price) return;
+  const need = needSec(price, inc);
+  const f = costLabel(need, inc);
+  const name = ($name.value || '').trim() || '这个东西';
+  const text = `${name}（${money(price)}元），我要工作 ${f.plain} 才买得起 😮‍💨`;
+  try {
+    await navigator.clipboard.writeText(text);
+    toast('文案已复制');
+  } catch (e) {
+    toast('复制失败，长按选择吧');
+  }
+});
+
+el('clearHist').addEventListener('click', () => {
+  history = []; store.set('history', []); renderHistory(); toast('已清空');
+});
+
+let toastTimer = null;
+function toast(msg) {
+  const t = el('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 1600);
+}
+
+/* ============ 启动 ============ */
+renderHistory();
+render(false);
+render(true);
+</script>
+</body>
+</html>

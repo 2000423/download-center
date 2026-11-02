@@ -370,6 +370,7 @@ function closeModal() { document.getElementById('modalMask').classList.remove('s
 document.getElementById('modalCancel').addEventListener('click', closeModal);
 document.getElementById('optAndroid').addEventListener('click', () => {
   if (APP_URLS.apk) { const a = document.createElement('a'); a.href = APP_URLS.apk; a.download = ''; a.click(); }
+  else if (APP_URLS.web) window.open(APP_URLS.web, '_blank'); // 纯网页应用：安卓也直接打开网页
   closeModal();
 });
 document.getElementById('optIos').addEventListener('click', () => {
@@ -498,7 +499,7 @@ fetch('files.json?t=' + Date.now())
         <div class="log-box">${logs}</div>` : '';
       return `
       <div class="file-card reveal" data-id="${f.id}" style="transition-delay:${Math.min(i * 90, 360)}ms">
-        <div class="icon">APP</div>
+        <div class="icon">${f.icon || 'APP'}</div>
         <div class="info">
           <div class="name-row">
             <span class="fname">${f.name}</span>

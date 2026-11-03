@@ -59,7 +59,17 @@
     background: rgba(255,255,255,.05);
     border: 1px solid rgba(255,215,106,.2);
     border-radius: 20px; padding: 6px 20px;
+    overflow-y: auto; -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain; max-height: 260px;
+    scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.18) transparent;
   }
+  .release-card::-webkit-scrollbar { width: 4px; }
+  .release-card::-webkit-scrollbar-thumb { background: rgba(255,255,255,.18); border-radius: 999px; }
+  .release-hint {
+    display: none; margin-top: 8px; text-align: center;
+    font-size: 11px; letter-spacing: .5px; color: rgba(232,246,255,.3);
+  }
+  .release-hint.show { display: block; }
   .release-item { display: flex; gap: 14px; padding: 15px 0; }
   .release-item + .release-item { border-top: 1px dashed rgba(255,255,255,.09); }
   .rel-date {
@@ -281,6 +291,7 @@
     <div id="releaseArea" class="release-section" style="display:none">
       <div class="release-sec-title">📢 发布动态</div>
       <div class="release-card reveal" id="releaseList"></div>
+      <div class="release-hint" id="releaseHint">↕ 上下滑动查看更多</div>
     </div>
 
     <main id="list"><div class="loading">加载中…</div></main>
@@ -474,6 +485,21 @@ fetch('releases.json?t=' + Date.now())
         </div>
       </div>`).join('');
     area.style.display = '';
+    // 固定窗口只显示 2 条，其余在框内滚动
+    const items = box.querySelectorAll('.release-item');
+    if (items.length > 2) {
+      const h = items[0].offsetHeight + items[1].offsetHeight;
+      if (h > 0) box.style.maxHeight = h + 'px';
+      document.getElementById('releaseHint').classList.add('show');
+      // 屏幕旋转 / 宽度变化后重新按 2 条算高度
+      window.addEventListener('resize', () => {
+        box.style.maxHeight = 'none';
+        requestAnimationFrame(() => {
+          const hh = items[0].offsetHeight + items[1].offsetHeight;
+          box.style.maxHeight = (hh > 0 ? hh : 260) + 'px';
+        });
+      });
+    }
     watchReveals();
   })
   .catch(() => {}); // 公告拉取失败不影响下载页主体

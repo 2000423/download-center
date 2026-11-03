@@ -47,56 +47,7 @@
     .reveal { opacity: 1; transform: none; transition: none; }
   }
 
-  /* ===== 发布公告栏 ===== */
-  .release-section { margin-bottom: 34px; }
-  .release-sec-title {
-    display: flex; align-items: center; gap: 8px;
-    font-size: 13px; font-weight: 700; letter-spacing: 1px;
-    color: rgba(232,246,255,.45); margin-bottom: 12px;
-  }
-  .release-sec-title::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, rgba(255,255,255,.14), transparent); }
-  .release-card {
-    background: rgba(255,255,255,.05);
-    border: 1px solid rgba(255,215,106,.2);
-    border-radius: 20px; padding: 6px 20px;
-    overflow-y: auto; -webkit-overflow-scrolling: touch;
-    overscroll-behavior: contain; max-height: 260px;
-    scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.18) transparent;
-  }
-  .release-card::-webkit-scrollbar { width: 4px; }
-  .release-card::-webkit-scrollbar-thumb { background: rgba(255,255,255,.18); border-radius: 999px; }
-  .release-hint {
-    display: none; margin-top: 8px; text-align: center;
-    font-size: 11px; letter-spacing: .5px; color: rgba(232,246,255,.3);
-  }
-  .release-hint.show { display: block; }
-  .release-item { display: flex; gap: 14px; padding: 15px 0; }
-  .release-item + .release-item { border-top: 1px dashed rgba(255,255,255,.09); }
-  .rel-date {
-    flex: none; width: 74px; padding-top: 2px;
-    font-size: 11.5px; font-variant-numeric: tabular-nums;
-    color: rgba(232,246,255,.4); letter-spacing: .3px;
-  }
-  .rel-main { flex: 1; min-width: 0; }
-  .rel-title { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-  .rel-t { font-size: 14.5px; font-weight: 700; color: #ffe9b3; }
-  .rel-ver {
-    flex: none; font-size: 10.5px; padding: 2px 8px; border-radius: 999px;
-    background: rgba(255,215,106,.14); border: 1px solid rgba(255,215,106,.45); color: #ffd76a;
-  }
-  .rel-new {
-    flex: none; font-size: 10px; padding: 2px 8px; border-radius: 999px;
-    background: linear-gradient(90deg, #00e5ff, #7b5cff); color: #06121f; font-weight: 800;
-  }
-  .rel-note {
-    margin-top: 6px; font-size: 12.5px; line-height: 1.75;
-    color: rgba(232,246,255,.6); white-space: pre-line;
-  }
-  @media (max-width: 560px) {
-    .release-card { padding: 4px 16px; }
-    .rel-date { width: 58px; font-size: 11px; }
-    .rel-t { font-size: 13.5px; }
-  }
+  /* ===== 发布公告栏：已移除 ===== */
 
   .file-card {
     background: rgba(255,255,255,.06);
@@ -288,12 +239,6 @@
       <div class="stats"><span><b id="statCount">0</b>个应用</span><span><b id="statVer">—</b>最新版本</span></div>
     </header>
 
-    <div id="releaseArea" class="release-section" style="display:none">
-      <div class="release-sec-title">📢 发布动态</div>
-      <div class="release-card reveal" id="releaseList"></div>
-      <div class="release-hint" id="releaseHint">↕ 上下滑动查看更多</div>
-    </div>
-
     <main id="list"><div class="loading">加载中…</div></main>
 
     <footer class="reveal">
@@ -463,46 +408,6 @@ document.addEventListener('click', e => {
     if (box) box.classList.toggle('open');
   }
 });
-
-/* ===== 发布公告栏：什么时候发布了什么产品 ===== */
-fetch('releases.json?t=' + Date.now())
-  .then(r => r.ok ? r.json() : Promise.reject())
-  .then(data => {
-    const list = (data && data.releases) || [];
-    if (!list.length) return;
-    const area = document.getElementById('releaseArea');
-    const box = document.getElementById('releaseList');
-    box.innerHTML = list.map((r, i) => `
-      <div class="release-item">
-        <div class="rel-date">${r.date || ''}</div>
-        <div class="rel-main">
-          <div class="rel-title">
-            <span class="rel-t">${r.product || ''}${r.version ? ' ' : ''}</span>
-            ${r.version ? `<span class="rel-ver">v${r.version}</span>` : ''}
-            ${i === 0 ? '<span class="rel-new">最新</span>' : ''}
-          </div>
-          ${r.note ? `<div class="rel-note">${r.note}</div>` : ''}
-        </div>
-      </div>`).join('');
-    area.style.display = '';
-    // 固定窗口只显示 2 条，其余在框内滚动
-    const items = box.querySelectorAll('.release-item');
-    if (items.length > 2) {
-      const h = items[0].offsetHeight + items[1].offsetHeight;
-      if (h > 0) box.style.maxHeight = h + 'px';
-      document.getElementById('releaseHint').classList.add('show');
-      // 屏幕旋转 / 宽度变化后重新按 2 条算高度
-      window.addEventListener('resize', () => {
-        box.style.maxHeight = 'none';
-        requestAnimationFrame(() => {
-          const hh = items[0].offsetHeight + items[1].offsetHeight;
-          box.style.maxHeight = (hh > 0 ? hh : 260) + 'px';
-        });
-      });
-    }
-    watchReveals();
-  })
-  .catch(() => {}); // 公告拉取失败不影响下载页主体
 
 fetch('files.json?t=' + Date.now())
   .then(r => r.json())

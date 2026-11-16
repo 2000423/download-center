@@ -352,6 +352,77 @@ document.getElementById('optIos').addEventListener('click', () => {
   closeModal();
 });
 
+/* ===== 微信/QQ 内置浏览器拦截安装包下载 → 弹引导 ===== */
+const IN_SHELL = /MicroMessenger/i.test(navigator.userAgent) ||
+  /QQ\/[\d.]+/i.test(navigator.userAgent) ||
+  /Weibo/i.test(navigator.userAgent);
+
+function ensureApkGuide() {
+  let m = document.getElementById('apkGuideMask');
+  if (m) return m;
+  m = document.createElement('div');
+  m.id = 'apkGuideMask';
+  m.style.cssText = 'position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(2,8,15,.78);' +
+    'z-index:999;display:none;align-items:center;justify-content:center;padding:24px;';
+  const card = document.createElement('div');
+  card.style.cssText = 'max-width:340px;width:100%;background:#101C2C;border:1px solid #2A3B52;' +
+    'border-radius:14px;padding:22px;color:#E8EEF6;font-size:14px;line-height:1.7;';
+  card.innerHTML =
+    '<div style="font-weight:700;font-size:16px;margin-bottom:10px;">这里下不了安装包</div>' +
+    '<div id="apkGuideText"></div>' +
+    '<div style="display:flex;gap:10px;margin-top:18px;">' +
+    '<button id="apkGuideCopy" style="flex:1;padding:11px;border-radius:10px;border:0;' +
+    'background:#3ECF8E;color:#04120F;font-weight:700;font-size:14px;">复制链接</button>' +
+    '<button id="apkGuideClose" style="flex:1;padding:11px;border-radius:10px;border:1px solid #2A3B52;' +
+    'background:transparent;color:#E8EEF6;font-size:14px;">我知道了</button>' +
+    '</div>';
+  m.appendChild(card);
+  document.body.appendChild(m);
+  m.querySelector('#apkGuideClose').addEventListener('click', () => { m.style.display = 'none'; });
+  m.querySelector('#apkGuideCopy').addEventListener('click', () => {
+    const url = m.dataset.url || '';
+    const done = () => {
+      const b = m.querySelector('#apkGuideCopy');
+      b.textContent = '已复制';
+      setTimeout(() => { b.textContent = '复制链接'; }, 1800);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).then(done).catch(() => fallbackCopy(url, done));
+    } else {
+      fallbackCopy(url, done);
+    }
+  });
+  return m;
+}
+function fallbackCopy(text, done) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.cssText = 'position:fixed;opacity:0;';
+  document.body.appendChild(ta);
+  ta.select();
+  try { document.execCommand('copy'); done(); } catch (_) {}
+  document.body.removeChild(ta);
+}
+
+if (IN_SHELL) {
+  document.addEventListener('click', e => {
+    const a = e.target && e.target.closest ? e.target.closest('a[href*=".apk"]') : null;
+    if (!a) return;
+    e.preventDefault();
+    e.stopPropagation();
+    let url = a.getAttribute('href') || '';
+    try { url = new URL(url, location.href).href; } catch (_) {}
+    const m = ensureApkGuide();
+    m.dataset.url = url;
+    m.querySelector('#apkGuideText').innerHTML =
+      '你是在微信 / QQ 里打开的本页，这类内置浏览器会拦截安装包下载，所以点了只弹「网页链接」。<br><br>' +
+      '<b>两个办法：</b><br>' +
+      '1. 点右上角「···」→「在浏览器中打开」，回到本页再点下载；<br>' +
+      '2. 点下面「复制链接」，粘到手机自带浏览器打开。';
+    m.style.display = 'flex';
+  }, true);
+}
+
 /* ===== 反馈表单：填写后直投作者邮箱 ===== */
 const OWNER_MAIL = '3484295527@qq.com';
 const fbMask = document.getElementById('fbMask');

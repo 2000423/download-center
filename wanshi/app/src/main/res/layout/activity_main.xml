@@ -44,6 +44,14 @@
             android:layout_weight="1" />
 
         <TextView
+            android:id="@+id/btnSniffer"
+            style="@style/Text.Pill"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="8dp"
+            android:text="网页嗅探" />
+
+        <TextView
             android:id="@+id/btnFloat"
             style="@style/Text.Pill"
             android:layout_width="wrap_content"

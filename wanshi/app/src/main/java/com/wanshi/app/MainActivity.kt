@@ -92,6 +92,10 @@ class MainActivity : AppCompatActivity() {
         findViewById<View>(R.id.btnDownloads).setOnClickListener {
             startActivity(Intent(this, DownloadsActivity::class.java))
         }
+        findViewById<View>(R.id.btnSniffer).setOnClickListener {
+            // 剪贴板里有链接就带过去直接打开
+            startActivity(Intent(this, SnifferActivity::class.java))
+        }
         findViewById<View>(R.id.btnSaveLink).setOnClickListener {
             showSaveDialog("", "")
         }

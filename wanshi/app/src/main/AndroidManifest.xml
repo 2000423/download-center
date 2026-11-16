@@ -43,6 +43,12 @@
             android:name=".DownloadsActivity"
             android:exported="false" />
 
+        <!-- 网页嗅探：内置浏览器里播视频，资源地址实时抓取 -->
+        <activity
+            android:name=".SnifferActivity"
+            android:exported="false"
+            android:configChanges="orientation|screenSize|keyboardHidden" />
+
         <service
             android:name=".MediaWatchService"
             android:exported="false"

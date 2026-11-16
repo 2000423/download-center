@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg"
+    android:orientation="vertical">
+
+    <!-- 顶栏 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingLeft="16dp"
+        android:paddingTop="14dp"
+        android:paddingRight="16dp">
+
+        <TextView
+            android:id="@+id/btnBack"
+            style="@style/Text.Pill"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="← 返回" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:layout_weight="1"
+            android:fontFamily="sans-serif-medium"
+            android:text="网页嗅探"
+            android:textColor="@color/text"
+            android:textSize="18sp" />
+
+        <TextView
+            android:id="@+id/btnSniffClear"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:padding="6dp"
+            android:text="清空"
+            android:textColor="@color/muted"
+            android:textSize="13sp" />
+    </LinearLayout>
+
+    <!-- 地址栏 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingLeft="16dp"
+        android:paddingTop="10dp"
+        android:paddingRight="16dp">
+
+        <EditText
+            android:id="@+id/etSniffUrl"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:background="@drawable/bg_input"
+            android:hint="输入网址，如 v.example.com"
+            android:importantForAutofill="no"
+            android:inputType="textUri"
+            android:maxLines="1"
+            android:padding="10dp"
+            android:textColor="@color/text"
+            android:textColorHint="@color/muted"
+            android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/btnGo"
+            style="@style/Text.PillAccent"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:text="打开" />
+    </LinearLayout>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingLeft="16dp"
+        android:paddingTop="6dp"
+        android:paddingRight="16dp"
+        android:text="视频在网页里播放的同时，资源地址会自动抓到下面，点一下就下载。"
+        android:textColor="@color/muted"
+        android:textSize="11sp" />
+
+    <!-- 网页 -->
+    <WebView
+        android:id="@+id/webSniffer"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginTop="8dp"
+        android:layout_weight="1" />
+
+    <!-- 抓到的资源 -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/bg_card"
+        android:paddingLeft="16dp"
+        android:paddingTop="10dp"
+        android:paddingRight="16dp"
+        android:text="抓到的资源（点一下下载）"
+        android:textColor="@color/accent"
+        android:textSize="13sp"
+        android:textStyle="bold" />
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="190dp"
+        android:background="@drawable/bg_card"
+        android:paddingBottom="10dp"
+        android:scrollbars="none">
+
+        <LinearLayout
+            android:id="@+id/sniffList"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingLeft="16dp"
+            android:paddingRight="16dp" />
+    </ScrollView>
+
+    <TextView
+        android:id="@+id/sniffEmpty"
+        android:layout_width="match_parent"
+        android:layout_height="190dp"
+        android:background="@drawable/bg_card"
+        android:gravity="center"
+        android:padding="16dp"
+        android:text="还没有抓到资源\n打开带视频的网页并播放，地址会出现在这里"
+        android:textColor="@color/muted"
+        android:textSize="13sp" />
+
+</LinearLayout>

@@ -261,9 +261,9 @@ object Downloader {
         val stream: OutputStream,
         val display: String,
         val uri: Uri?,
-        private val resolver: ContentResolver?,
-        private val pendingUri: Uri?,
-        private val file: File?
+        val resolver: ContentResolver?,
+        val pendingUri: Uri?,
+        val file: File?
     )
 
     private fun openSink(context: Context, name: String, mime: String): Sink? {

@@ -12,12 +12,23 @@ android {
         minSdk = 26
         targetSdk = 34
         versionCode = 1
-        versionName = "1.0.0"
+        versionName = "0.1.0"
+    }
+
+    signingConfigs {
+        // 自用签名（密钥库随工程一起保存，保证后续版本能覆盖安装）
+        create("release") {
+            storeFile = rootProject.file("keystore/wanshi.jks")
+            storePassword = "wanshi2026"
+            keyAlias = "wanshi"
+            keyPassword = "wanshi2026"
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

@@ -26,6 +26,9 @@
 
 ## 三、编译
 
+**已出包**：`files/wanshi-v0.1.0.apk`（v0.1.0 / 2.7 MB / minSdk 26 / targetSdk 34 / 已用 `keystore/wanshi.jks` 签名）。
+从下载中心点「获取应用」即可直接下载安装，不需要自己编译。下面是想改代码时的编译方式。
+
 环境要求：
 
 - Android Studio **Koala (2024.1)** 或更新（自带 JDK 17）
@@ -39,7 +42,18 @@
 3. 连接手机（开 USB 调试）→ 点 ▶ Run
 4. 要装到别的手机：`Build → Build Bundle(s)/APK(s) → Build APK(s)`，产物在 `app/build/outputs/apk/debug/app-debug.apk`
 
-> 想用命令行编译的话，先执行一次 `gradle wrapper` 生成 `gradlew` 与 `gradle-wrapper.jar`（本工程未附带该二进制文件）。
+命令行出正式包（需要 JDK 17 + Android SDK 34，`local.properties` 里写 `sdk.dir`）：
+
+```bash
+gradle assembleRelease
+# 产物：app/build/outputs/apk/release/app-release.apk
+```
+
+> `gradlew` / `gradle-wrapper.jar` 未随工程附带；用 Android Studio 打开会自动生成，或先执行一次 `gradle wrapper`。
+
+签名信息（`app/build.gradle.kts` 的 `signingConfigs.release`）：密钥库 `keystore/wanshi.jks`，
+别名 `wanshi`，口令 `wanshi2026`，有效期 30 年。**请保留这个 jks**——后续版本用同一个签名才能覆盖安装，
+否则老用户必须先卸载。
 
 ## 四、首次使用
 

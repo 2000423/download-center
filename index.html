@@ -330,8 +330,13 @@ function openModal(f) {
   const ua = navigator.userAgent;
   const isIos = /iPhone|iPad|iPod/i.test(ua);
   const isAndroid = /Android/i.test(ua);
-  document.getElementById('optIos').classList.toggle('recommend', isIos);
-  document.getElementById('optAndroid').classList.toggle('recommend', isAndroid);
+  const onlyAndroid = !!f.androidOnly;
+  document.getElementById('optIos').style.display = onlyAndroid ? 'none' : 'flex';
+  document.getElementById('modalSub').textContent = onlyAndroid
+    ? '这款应用仅支持安卓，下载安装包后点开即可安装'
+    : '同一个应用，两种获取方式，功能完全一致';
+  document.getElementById('optIos').classList.toggle('recommend', !onlyAndroid && isIos);
+  document.getElementById('optAndroid').classList.toggle('recommend', onlyAndroid || isAndroid);
   document.getElementById('modalMask').classList.add('show');
 }
 function closeModal() { document.getElementById('modalMask').classList.remove('show'); }

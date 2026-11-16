@@ -309,6 +309,19 @@ const io = new IntersectionObserver(entries => {
 }, { threshold: .08 });
 function watchReveals() { document.querySelectorAll('.reveal:not(.on)').forEach(el => io.observe(el)); }
 
+/* ===== 版本号比较：统计栏显示最高的那个版本 ===== */
+function verNum(v) {
+  return String(v || '0').split('.').map(x => parseInt(x, 10) || 0);
+}
+function verCmp(a, b) {
+  const x = verNum(a), y = verNum(b), n = Math.max(x.length, y.length);
+  for (let i = 0; i < n; i++) {
+    const d = (x[i] || 0) - (y[i] || 0);
+    if (d) return d;
+  }
+  return 0;
+}
+
 function openModal(f) {
   document.getElementById('modalName').textContent = f.name + ' · 选择系统';
   APP_URLS.web = f.file;
@@ -417,7 +430,8 @@ fetch('files.json?t=' + Date.now())
     const list = document.getElementById('list');
     const files = data.files || [];
     document.getElementById('statCount').textContent = files.length;
-    document.getElementById('statVer').textContent = files.length ? files[0].version : '—';
+    const topVer = files.map(f => f.version).sort(verCmp).pop();
+    document.getElementById('statVer').textContent = topVer || '—';
     if (!files.length) { list.innerHTML = '<div class="empty">暂无文件，敬请期待</div>'; return; }
     list.innerHTML = files.map((f, i) => {
       const tags = (f.tags || []).map(t => `<span class="tag">${t}</span>`).join('');
@@ -437,24 +451,28 @@ fetch('files.json?t=' + Date.now())
             <span class="ver">v${f.version}</span>
             ${tags}
           </div>
-          <div class="meta">${f.date} · ${f.size} · Android &amp; iPhone</div>
+          <div class="meta">${f.date} · ${f.size} · ${f.platforms || 'Android &amp; iPhone'}</div>
           <div class="desc">${f.desc || ''}</div>
           ${logHtml}
           <div class="dl-row">
-            <a class="dl-btn" href="javascript:void(0)">📲 获取应用</a>
+            ${f.pageOnly
+              ? `<a class="dl-btn" href="${f.file}" target="_blank" rel="noopener">${f.cta || '📄 查看详情'}</a>`
+              : `<a class="dl-btn" href="javascript:void(0)">📲 获取应用</a>`}
           </div>
+          ${f.notice ? `<div class="install-tip">${f.notice}</div>` : ''}
         </div>
       </div>`;
     }).join('');
-    // 只有点「获取应用」按钮才弹出系统选择窗
+    // 只有点「获取应用」按钮才弹出系统选择窗（工程页直连的卡片不弹）
     document.querySelectorAll('.file-card').forEach(card => {
+      const f = files.find(x => x.id === card.dataset.id);
+      if (!f || f.pageOnly) return;
       const btn = card.querySelector('.dl-btn');
       if (!btn) return;
       btn.addEventListener('click', e => {
         e.preventDefault();
         e.stopPropagation();
-        const f = files.find(x => x.id === card.dataset.id);
-        if (f) openModal(f);
+        openModal(f);
       });
     });
     watchReveals();

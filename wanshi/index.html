@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>万视 · 挂在后台，识别你在看的视频</title>
+<style>
+  :root{
+    --bg:#060910; --card:#101827; --pill:#16202f;
+    --stroke:#1e2a40; --stroke-soft:#17202f;
+    --accent:#25e8c6; --accent2:#6c8cff;
+    --text:#f1f6ff; --muted:#7c8ba3;
+    --warn:#ffc24b; --warn-bg:#1e1a0c; --warn-stroke:#3b3012;
+    --danger:#ff5c7a;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:radial-gradient(1200px 620px at 50% -12%,#0d1526 0%,#060910 62%);
+    color:var(--text);
+    font-family:"PingFang SC","Microsoft YaHei","Helvetica Neue",Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:inherit;text-decoration:none}
+  .wrap{max-width:1160px;margin:0 auto;padding:0 24px}
+
+  /* ---------- 顶部 ---------- */
+  header{padding:52px 0 8px;text-align:center}
+  .logo{display:inline-flex;align-items:center;gap:12px}
+  .logo .mark{width:8px;height:30px;border-radius:99px;background:linear-gradient(180deg,var(--accent),var(--accent2))}
+  .logo h1{font-size:34px;letter-spacing:.16em;font-weight:600}
+  header p.tag{margin-top:16px;font-size:14px;color:#b9c6da;letter-spacing:.04em}
+  .badges{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:22px}
+  .badge{
+    font-size:12px;padding:7px 13px;border-radius:99px;border:1px solid var(--stroke);
+    background:var(--pill);color:#c3d0e2;
+  }
+  .badge.warn{background:var(--warn-bg);border-color:var(--warn-stroke);color:var(--warn)}
+  .badge b{color:var(--accent)}
+  .cta-row{display:flex;gap:12px;justify-content:center;margin-top:26px;flex-wrap:wrap}
+  .btn{
+    font-size:13.5px;padding:11px 22px;border-radius:99px;border:1px solid var(--stroke-soft);
+    background:var(--pill);color:var(--text);transition:.2s;
+  }
+  .btn:hover{border-color:#2b3c58}
+  .btn.primary{
+    background:linear-gradient(90deg,var(--accent),var(--accent2));color:#04120f;font-weight:700;border:0;
+  }
+  .btn.primary:hover{filter:brightness(1.06)}
+
+  /* ---------- 通用标题 ---------- */
+  .sec{padding:64px 0 0}
+  .sec > h2{font-size:19px;font-weight:600;letter-spacing:.03em;display:flex;align-items:center;gap:10px}
+  .sec > h2::before{content:"";width:5px;height:18px;border-radius:99px;background:linear-gradient(180deg,var(--accent),var(--accent2))}
+  .sec > p.desc{margin-top:12px;color:var(--muted);font-size:13px;line-height:1.9;max-width:760px}
+
+  /* ---------- 能力卡 ---------- */
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(248px,1fr));gap:14px;margin-top:24px}
+  .cell{background:var(--card);border:1px solid var(--stroke);border-radius:16px;padding:18px}
+  .cell h3{font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px}
+  .cell h3 i{width:6px;height:6px;border-radius:50%;background:var(--accent);font-style:normal}
+  .cell p{margin-top:8px;font-size:12.5px;color:var(--muted);line-height:1.85}
+
+  /* ---------- 手机 ---------- */
+  .stage{display:flex;gap:30px;justify-content:center;align-items:flex-start;flex-wrap:wrap;margin-top:28px}
+  .col{width:320px}
+  .cap{font-size:12px;color:var(--muted);text-align:center;margin-bottom:12px;letter-spacing:.08em}
+  .phone{
+    width:320px;height:660px;border-radius:36px;background:var(--bg);
+    border:1px solid #1b2436;box-shadow:0 30px 70px -30px #000,inset 0 0 0 6px #0a0f18;
+    padding:14px 0 0;position:relative;overflow:hidden;display:flex;flex-direction:column;
+  }
+  .notch{position:absolute;top:7px;left:50%;transform:translateX(-50%);width:80px;height:16px;border-radius:12px;background:#04070c}
+  .brand{display:flex;align-items:center;gap:9px;padding:12px 16px 0}
+  .brand .mark{width:6px;height:20px;border-radius:99px;background:linear-gradient(90deg,var(--accent),var(--accent2))}
+  .brand b{font-size:20px;font-weight:600}
+  .brand small{color:var(--muted);font-size:10.5px;margin-top:3px}
+  .grow{flex:1}
+  .pill{
+    font-size:11.5px;padding:6px 12px;border-radius:99px;border:1px solid var(--stroke-soft);
+    background:var(--pill);color:var(--text);white-space:nowrap;
+  }
+  .pill.accent{background:linear-gradient(90deg,var(--accent),var(--accent2));color:#04120f;font-weight:700;border:0}
+  .sub{padding:5px 17px 0;color:var(--muted);font-size:11px}
+  .card{background:var(--card);border:1px solid var(--stroke);border-radius:17px;padding:15px}
+  .status{display:flex;align-items:center;gap:11px;margin:14px;padding:15px}
+  .dot{width:9px;height:9px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 4px rgba(37,232,198,.12);flex:none}
+  .dot.off{background:#3a465c;box-shadow:none}
+  .status h3{font-size:14px;font-weight:600}
+  .status p{font-size:11px;color:var(--muted);margin-top:4px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .sect{display:flex;align-items:center;padding:12px 17px 7px;font-size:13px}
+  .sect .n{color:var(--muted);font-size:11px;margin-left:7px}
+  .sect .clear{color:var(--muted);font-size:11px}
+  .list{flex:1;overflow:hidden;padding:0 15px}
+  .item{background:var(--card);border:1px solid var(--stroke);border-radius:15px;padding:12px;margin-bottom:9px}
+  .row{display:flex;align-items:center;gap:9px}
+  .it-title{font-size:13px;font-weight:600;flex:1;line-height:1.35}
+  .it-time{font-size:10px;color:var(--muted);white-space:nowrap}
+  .meta{font-size:11px;color:var(--muted);margin-top:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .acts{display:flex;align-items:center;margin-top:9px}
+  .mini{font-size:11px;padding:5px 11px;border-radius:99px;background:var(--pill);border:1px solid var(--stroke-soft)}
+  .mini.acc{background:linear-gradient(90deg,var(--accent),var(--accent2));color:#04120f;font-weight:700;border:0}
+  .bottom{padding:7px 15px 16px}
+  .cta{display:block;text-align:center;padding:14px;border-radius:99px;font-size:14px;font-weight:700;
+       background:linear-gradient(90deg,var(--accent),var(--accent2));color:#04120f}
+  .scrim{position:absolute;inset:0;background:rgba(3,6,12,.72);display:flex;align-items:center;justify-content:center;padding:18px}
+  .dialog{width:100%;background:#0e1624;border:1px solid #22304a;border-radius:18px;padding:16px 16px 6px;box-shadow:0 24px 60px -20px #000}
+  .dialog h4{font-size:15px;font-weight:600;margin-bottom:12px}
+  .lab{font-size:11px;color:var(--muted);letter-spacing:.04em;margin-bottom:5px}
+  .field{background:#0b1220;border:1px solid var(--stroke);border-radius:13px;padding:11px;font-size:12px;color:var(--muted);line-height:1.6}
+  .field.filled{color:var(--text)}
+  .tip{font-size:10px;color:var(--muted);line-height:1.65;margin-top:12px}
+  .btns{display:flex;justify-content:flex-end;align-items:center;gap:14px;margin-top:10px;padding-top:9px;border-top:1px solid #1a2334}
+  .btns .n{color:var(--muted);font-size:12px;margin-right:auto}
+  .btns .c{color:var(--muted);font-size:12.5px}
+  .btns .ok{color:var(--accent);font-size:12.5px;font-weight:600}
+  .dl-item{background:var(--card);border:1px solid var(--stroke);border-radius:15px;padding:12px;margin-bottom:9px}
+  .dl-name{font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .dl-state{font-size:11px;margin-top:4px}
+  .dl-state.run,.dl-state.ok{color:var(--accent)}
+  .dl-state.err{color:var(--danger)}
+  .bar{height:4px;border-radius:99px;background:var(--stroke);margin-top:9px;overflow:hidden}
+  .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2))}
+  .dl-path{font-size:10px;color:var(--muted);margin-top:7px}
+  .back{font-size:18px;margin-right:9px}
+
+  /* ---------- 步骤 / 说明 ---------- */
+  .steps{margin-top:24px;display:grid;gap:10px}
+  .step{display:flex;gap:14px;background:var(--card);border:1px solid var(--stroke);border-radius:14px;padding:16px}
+  .step .idx{
+    flex:none;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    font-size:12px;font-weight:700;color:#04120f;background:linear-gradient(90deg,var(--accent),var(--accent2));
+  }
+  .step h4{font-size:13.5px;font-weight:600}
+  .step p{margin-top:6px;font-size:12.5px;color:var(--muted);line-height:1.85}
+  code{
+    font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px;
+    background:#0b1220;border:1px solid var(--stroke);border-radius:6px;padding:1.5px 6px;color:#cfe3ff;
+  }
+  .warnbox{
+    margin-top:24px;background:var(--warn-bg);border:1px solid var(--warn-stroke);border-radius:16px;padding:20px;
+  }
+  .warnbox h3{font-size:14px;color:var(--warn);font-weight:600}
+  .warnbox ol{margin:12px 0 0 18px;color:#b7a583;font-size:12.5px;line-height:2}
+  .warnbox b{color:var(--warn)}
+  .tree{
+    margin-top:20px;background:#0b1220;border:1px solid var(--stroke);border-radius:14px;padding:18px;
+    font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px;line-height:2;color:#9db0c9;
+    overflow-x:auto;white-space:pre;
+  }
+  .tree b{color:#cfe3ff;font-weight:500}
+
+  footer{
+    margin-top:70px;padding:30px 0 44px;border-top:1px solid #121b28;text-align:center;
+    color:#5c6a80;font-size:11.5px;line-height:2;
+  }
+  footer a{color:#8d9cb3}
+  @media (max-width:720px){
+    header{padding-top:36px}
+    .logo h1{font-size:27px}
+    .phone{transform:scale(.94);transform-origin:top center}
+  }
+</style>
+</head>
+<body>
+
+<header class="wrap">
+  <div class="logo"><div class="mark"></div><h1>万视</h1></div>
+  <p class="tag">挂在后台，自动识别你正在看的视频；需要时，把链接交给它下载到本地。</p>
+  <div class="badges">
+    <span class="badge">Android 原生 · Kotlin</span>
+    <span class="badge">识别服务常驻 · 不抓屏不录屏</span>
+    <span class="badge warn">源码工程 · 尚未发布 APK</span>
+  </div>
+  <div class="cta-row">
+    <a class="btn primary" href="#preview">看界面</a>
+    <a class="btn" href="#build">怎么编译</a>
+    <a class="btn" href="../">返回下载中心</a>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <section class="sec">
+    <h2>它做什么</h2>
+    <p class="desc">
+      用系统的媒体会话（MediaSession）与媒体通知两条链路，识别出「现在哪个 App 在播什么」，
+      整理成一份记录列表；要保存时，把在播放 App 里复制到的链接粘进来，由它下载到本地。
+    </p>
+    <div class="grid">
+      <div class="cell">
+        <h3><i></i>后台识别</h3>
+        <p>前台服务每 1.5 秒读一次系统媒体会话，拿到 App 名、标题、播放状态与时长，常驻通知实时显示「正在播放：xxx」。</p>
+      </div>
+      <div class="cell">
+        <h3><i></i>通知兜底</h3>
+        <p>不暴露媒体会话的 App，只要有播放通知也能被识别，两条链路用「包名 + 标题」去重。</p>
+      </div>
+      <div class="cell">
+        <h3><i></i>直链 / m3u8</h3>
+        <p>mp4 等直链边下边写；m3u8 自动选最高码率，按顺序把分片拼成一个 .ts 文件。</p>
+      </div>
+      <div class="cell">
+        <h3><i></i>三种给链接的方式</h3>
+        <p>其它 App「分享 → 万视」、复制链接后回来自动带入、手动粘贴，都会唤起同一个保存弹窗。</p>
+      </div>
+      <div class="cell">
+        <h3><i></i>存到公共目录</h3>
+        <p>文件放到 <code>手机存储/Download/万视/</code>，下载完成通知点一下就能播放。</p>
+      </div>
+      <div class="cell">
+        <h3><i></i>数据只在本机</h3>
+        <p>识别记录最多存 60 条在本地，不联网上报任何内容，也不读取通知正文。</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="preview">
+    <h2>界面</h2>
+    <p class="desc">深色 HUD 风格，主色 #25E8C6 → #6C8CFF。下面是三屏示意（非真机截图）。</p>
+
+    <div class="stage">
+
+      <div class="col">
+        <div class="cap">① 识别中 · 记录列表</div>
+        <div class="phone">
+          <div class="notch"></div>
+          <div class="brand">
+            <div class="mark"></div><b>万视</b><small>v1.0</small>
+            <div class="grow"></div><div class="pill">下载列表</div>
+          </div>
+          <div class="sub">挂在后台，识别你正在看的视频</div>
+          <div class="card status">
+            <div class="dot"></div>
+            <div style="flex:1">
+              <h3>识别中</h3>
+              <p>正在播放 · 猫和老鼠 第14集</p>
+            </div>
+            <div class="pill accent">停止识别</div>
+          </div>
+          <div class="sect">识别记录 <span class="n">3</span><div class="grow"></div><span class="clear">清空</span></div>
+          <div class="list">
+            <div class="item">
+              <div class="row"><div class="dot"></div><div class="it-title">猫和老鼠 第14集 猫儿上天堂</div><div class="it-time">14:03</div></div>
+              <div class="meta">抖音 · 03:12 · 播放中</div>
+              <div class="acts"><div class="mini">复制标题</div><div class="grow"></div><div class="mini acc">保存到本地</div></div>
+            </div>
+            <div class="item">
+              <div class="row"><div class="dot off"></div><div class="it-title">三国演义 第08集 桃园结义</div><div class="it-time">13:41</div></div>
+              <div class="meta">腾讯视频 · 45:02 · 已暂停</div>
+              <div class="acts"><div class="mini">复制标题</div><div class="grow"></div><div class="mini acc">保存到本地</div></div>
+            </div>
+            <div class="item">
+              <div class="row"><div class="dot off"></div><div class="it-title">一条城市漫游 vlog</div><div class="it-time">12:38</div></div>
+              <div class="meta">哔哩哔哩 · 12:38 · 已暂停 · 来自通知</div>
+              <div class="acts"><div class="mini">复制标题</div><div class="grow"></div><div class="mini acc">保存到本地</div></div>
+            </div>
+          </div>
+          <div class="bottom"><div class="cta">＋ 粘贴链接保存</div></div>
+        </div>
+      </div>
+
+      <div class="col">
+        <div class="cap">② 点「保存到本地」</div>
+        <div class="phone">
+          <div class="notch"></div>
+          <div class="brand">
+            <div class="mark"></div><b>万视</b><small>v1.0</small>
+            <div class="grow"></div><div class="pill">下载列表</div>
+          </div>
+          <div class="sub">挂在后台，识别你正在看的视频</div>
+          <div class="card status">
+            <div class="dot"></div>
+            <div style="flex:1"><h3>识别中</h3><p>正在播放 · 猫和老鼠 第14集</p></div>
+            <div class="pill accent">停止识别</div>
+          </div>
+          <div class="sect">识别记录 <span class="n">3</span><div class="grow"></div><span class="clear">清空</span></div>
+          <div class="list">
+            <div class="item" style="opacity:.45">
+              <div class="row"><div class="dot"></div><div class="it-title">猫和老鼠 第14集 猫儿上天堂</div><div class="it-time">14:03</div></div>
+              <div class="meta">抖音 · 03:12 · 播放中</div>
+            </div>
+          </div>
+          <div class="scrim">
+            <div class="dialog">
+              <h4>保存到本地</h4>
+              <div class="lab">视频链接</div>
+              <div class="field">粘贴 mp4 直链或 m3u8 链接</div>
+              <div class="lab" style="margin-top:13px">文件名（可选）</div>
+              <div class="field filled">猫和老鼠 第14集 猫儿上天堂</div>
+              <div class="tip">小提示：在播放 App 里点「分享 → 复制链接」，再回来粘贴即可。加密流（AES）无法下载。</div>
+              <div class="btns"><span class="n">打开原 App</span><span class="c">取消</span><span class="ok">开始下载</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col">
+        <div class="cap">③ 下载列表 · 进度与结果</div>
+        <div class="phone">
+          <div class="notch"></div>
+          <div class="brand" style="padding-top:12px">
+            <span class="back">←</span><b style="font-size:16px">下载列表</b>
+            <div class="grow"></div><small style="color:var(--muted);font-size:11px">清空已完成</small>
+          </div>
+          <div class="sub" style="padding-top:7px">文件保存在 手机存储/Download/万视/</div>
+          <div class="list" style="padding-top:11px">
+            <div class="dl-item">
+              <div class="dl-name">猫和老鼠 第14集 猫儿上天堂.ts</div>
+              <div class="dl-state run">下载中 62% · 分片 62/100</div>
+              <div class="bar"><i style="width:62%"></i></div>
+            </div>
+            <div class="dl-item">
+              <div class="dl-name">一条城市漫游 vlog.mp4</div>
+              <div class="dl-state ok">已完成 · 点按播放</div>
+              <div class="bar"><i style="width:100%"></i></div>
+              <div class="dl-path">保存在 下载/万视/一条城市漫游 vlog.mp4</div>
+            </div>
+            <div class="dl-item">
+              <div class="dl-name">某平台试看片段.m3u8</div>
+              <div class="dl-state err">失败：该视频是加密流（AES），暂不支持保存</div>
+              <div class="bar"><i style="width:0"></i></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <section class="sec" id="build">
+    <h2>怎么编译</h2>
+    <p class="desc">这是源码工程，APK 需要你自己用 Android Studio 构建一次（作者本机没有 Android 构建环境，不提供预编译包）。</p>
+    <div class="steps">
+      <div class="step">
+        <div class="idx">1</div>
+        <div>
+          <h4>装 Android Studio</h4>
+          <p>Koala（2024.1）或更新版本，自带 JDK 17。工程用 Gradle 8.7 / AGP 8.5.2 / Kotlin 1.9.24。</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="idx">2</div>
+        <div>
+          <h4>打开 <code>wanshi/</code> 目录</h4>
+          <p><code>File → Open</code> 选择本页所在目录，首次 Sync 会按 <code>gradle-wrapper.properties</code> 自动下载 Gradle 8.7。</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="idx">3</div>
+        <div>
+          <h4>连手机点 Run</h4>
+          <p>开启 USB 调试后直接运行；要装到别的手机走 <code>Build → Build APK(s)</code>，产物在 <code>app/build/outputs/apk/debug/</code>。</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="idx">4</div>
+        <div>
+          <h4>首次启动授权</h4>
+          <p>按提示打开「通知使用权」（系统设置里找到万视并允许），再点「开始识别」。通知权限用于显示识别状态与下载进度。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <h2>它做不到什么</h2>
+    <div class="warnbox">
+      <h3>先说清楚，免得白折腾</h3>
+      <ol>
+        <li><b>拿不到视频地址。</b>系统只提供标题和播放状态，不提供 URL。抖音、B 站、腾讯视频的真实播放地址是私有接口 + 签名防盗链，任何第三方 App 都无法旁路获取——所以保存时要你把链接喂给它。</li>
+        <li><b>加密流下不了。</b>遇到 AES-128 / SAMPLE-AES 的分片流会直接提示，不会假装在下载。</li>
+        <li><b>不碰 DRM。</b>受 Widevine 等保护的内容一律无法保存。</li>
+        <li><b>不抓屏、不录屏、不读通知正文。</b>只取媒体通知里的标题与副标题，数据只留在本机。</li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="sec">
+    <h2>工程结构</h2>
+    <div class="tree">wanshi/
+├── build.gradle.kts / settings.gradle.kts / gradle.properties
+├── README.md                     完整说明（含逐条限制与扩展点）
+└── app/src/main/
+    ├── AndroidManifest.xml       权限、四个组件、分享入口、FileProvider
+    ├── java/com/wanshi/app/
+    │   ├── <b>MainActivity</b>             首页：状态、识别列表、保存弹窗
+    │   ├── <b>DownloadsActivity</b>        下载列表：进度、打开文件
+    │   ├── <b>MediaWatchService</b>        前台服务：轮询媒体会话
+    │   ├── <b>SessionListenerService</b>   通知使用权 + 媒体通知兜底
+    │   ├── <b>DownloadService</b>          前台下载服务（任务串行）
+    │   ├── <b>Downloader</b>               直链 / m3u8 下载与合并
+    │   ├── MediaRepository / DownloadStore / WatchingState / MediaItem / Fmt
+    │   └── DetectAdapter / DownloadAdapter / NotificationHelper
+    └── res/                      5 个布局、9 个形状与图标、colors / themes</div>
+  </section>
+
+  <footer>
+    万视 · WanShi &nbsp;|&nbsp; Android 原生源码工程 &nbsp;|&nbsp;
+    <a href="../">← 下载中心</a>
+    <br>
+    仅用于保存你有权保存的内容，请遵守平台的用户协议与当地法律。
+  </footer>
+
+</div>
+
+</body>
+</html>

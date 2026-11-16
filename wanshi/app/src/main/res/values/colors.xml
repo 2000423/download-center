@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="bg">#060910</color>
+    <color name="card">#101827</color>
+    <color name="pill">#16202F</color>
+    <color name="stroke">#1E2A40</color>
+    <color name="stroke_soft">#17202F</color>
+    <color name="accent">#25E8C6</color>
+    <color name="accent_dark">#12B79B</color>
+    <color name="accent2">#6C8CFF</color>
+    <color name="text">#F1F6FF</color>
+    <color name="muted">#7C8BA3</color>
+    <color name="warn_bg">#1E1A0C</color>
+    <color name="warn_stroke">#3B3012</color>
+    <color name="warn">#FFC24B</color>
+    <color name="danger">#FF5C7A</color>
+    <color name="launcher_bg">#060910</color>
+</resources>

@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingLeft="20dp"
+    android:paddingTop="8dp"
+    android:paddingRight="20dp"
+    android:paddingBottom="4dp">
+
+    <TextView
+        style="@style/Text.Label"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="视频链接" />
+
+    <EditText
+        android:id="@+id/etUrl"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:background="@drawable/bg_input"
+        android:gravity="top|start"
+        android:hint="粘贴 mp4 直链或 m3u8 链接"
+        android:importantForAutofill="no"
+        android:inputType="textUri"
+        android:lineSpacingExtra="3dp"
+        android:maxLines="3"
+        android:minLines="2"
+        android:padding="12dp"
+        android:textColor="@color/text"
+        android:textColorHint="@color/muted"
+        android:textSize="13sp" />
+
+    <TextView
+        style="@style/Text.Label"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="14dp"
+        android:text="文件名（可选）" />
+
+    <EditText
+        android:id="@+id/etName"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:background="@drawable/bg_input"
+        android:hint="留空则自动取名"
+        android:importantForAutofill="no"
+        android:inputType="text"
+        android:maxLines="1"
+        android:padding="12dp"
+        android:textColor="@color/text"
+        android:textColorHint="@color/muted"
+        android:textSize="13sp" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="14dp"
+        android:lineSpacingExtra="2dp"
+        android:text="小提示：在播放 App 里点「分享 → 复制链接」，再回来粘贴即可。加密流（AES）无法下载。"
+        android:textColor="@color/muted"
+        android:textSize="11sp" />
+
+</LinearLayout>

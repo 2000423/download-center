@@ -43,6 +43,11 @@ class SessionListenerService : NotificationListenerService() {
         val pkg = sbn0.packageName ?: return
         if (pkg == packageName) return
 
+        // 音乐 / 音频类应用整体忽略：万视只关心视频
+        if (MediaFilter.isMusic(pkg)) return
+        // 这个 App 暴露了媒体会话 → 以会话为准，通知只说明「它发过媒体通知」，不能证明正在播放
+        if (MediaFilter.hasSession(pkg)) return
+
         val n = sbn0.notification ?: return
         val extras = n.extras ?: return
 
@@ -51,6 +56,17 @@ class SessionListenerService : NotificationListenerService() {
             extras.containsKey(Notification.EXTRA_MEDIA_SESSION) ||
             template.contains("MediaStyle", true)
         if (!isMedia) return
+
+        // 通知上的按钮能反映状态：出现「播放 / 继续 / Play」说明它此刻是暂停的
+        val actions = n.actions
+        if (actions != null) {
+            val paused = actions.any { a ->
+                val t = a.title?.toString().orEmpty()
+                t.contains("播放") || t.contains("继续") || t.contains("恢复") ||
+                    t.equals("Play", true) || t.equals("Resume", true)
+            }
+            if (paused) return
+        }
 
         val title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString()?.trim().orEmpty()
         if (title.isEmpty()) return

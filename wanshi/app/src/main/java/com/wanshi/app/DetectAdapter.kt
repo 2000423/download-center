@@ -30,6 +30,10 @@ class DetectAdapter(private val onAction: (MediaItem, Int) -> Unit) :
 
     override fun getItemCount(): Int = data.size
 
+    /** 侧滑删除时按位置取记录 */
+    fun itemAt(position: Int): MediaItem? =
+        if (position >= 0 && position < data.size) data[position] else null
+
     override fun onBindViewHolder(holder: VH, position: Int) {
         holder.bind(data[position])
     }

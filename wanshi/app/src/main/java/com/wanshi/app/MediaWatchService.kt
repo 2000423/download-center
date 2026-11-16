@@ -145,7 +145,16 @@ class MediaWatchService : Service() {
         var playingTitle: String? = null
         var playingApp: String? = null
 
+        // 每一轮重新统计「哪些 App 暴露了媒体会话」，通知链路据此避免重复采信
+        MediaFilter.resetSessions()
+
         for (controller in sessions) {
+            val pkg = controller.packageName ?: continue
+            MediaFilter.markSession(pkg)
+
+            // 音乐 / 音频类应用整体忽略：万视只关心视频
+            if (MediaFilter.isMusic(pkg)) continue
+
             val md = controller.metadata ?: continue
             val title = (
                 md.getString(MediaMetadata.METADATA_KEY_TITLE)
@@ -153,7 +162,6 @@ class MediaWatchService : Service() {
                 )?.trim().orEmpty()
             if (title.isEmpty()) continue
 
-            val pkg = controller.packageName ?: continue
             val label = labelOf(pkg)
             val state = controller.playbackState?.state ?: PlaybackState.STATE_NONE
             val isPlaying = state == PlaybackState.STATE_PLAYING
@@ -164,9 +172,14 @@ class MediaWatchService : Service() {
             val duration = md.getLong(MediaMetadata.METADATA_KEY_DURATION)
             val position = controller.playbackState?.position ?: 0L
 
+            val id = "s|" + pkg + "|" + title
+            // 没在播放、且历史上也没记录过 → 直接跳过。
+            // 这样「桌面上摆着的播放控件」不会被当成正在看的视频抓进来。
+            if (!isPlaying && !MediaRepository.contains(id)) continue
+
             MediaRepository.upsert(
                 MediaItem(
-                    id = "s|" + pkg + "|" + title,
+                    id = id,
                     title = title,
                     artist = artist,
                     packageName = pkg,

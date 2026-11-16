@@ -169,10 +169,10 @@
   <div class="badges">
     <span class="badge">Android 原生 · Kotlin</span>
     <span class="badge">识别服务常驻 · 不抓屏不录屏</span>
-    <span class="badge">v0.1.0 · 2.7 MB · 已签名</span>
+    <span class="badge">v0.2.0 · 2.7 MB · 已签名</span>
   </div>
   <div class="cta-row">
-    <a class="btn primary" href="../files/wanshi-v0.1.0.apk" download>⬇ 下载 APK</a>
+    <a class="btn primary" href="../files/wanshi-v0.2.0.apk" download>⬇ 下载 APK</a>
     <a class="btn" href="#preview">看界面</a>
     <a class="btn" href="#build">自己编译</a>
     <a class="btn" href="../">返回下载中心</a>
@@ -190,12 +190,24 @@
     </p>
     <div class="grid">
       <div class="cell">
+        <h3><i></i>悬浮球</h3>
+        <p>桌面或任意 App 上多一个可拖动的小圆点，点开就能：返回万视、开始/暂停识别、看刚识别到的视频。不用再切回 App 里操作。</p>
+      </div>
+      <div class="cell">
+        <h3><i></i>左滑删除</h3>
+        <p>识别记录里，从右往左滑任意一条就能单独删掉，滑到底出现红色「删除」，不用为了去掉一条而清空全部。</p>
+      </div>
+      <div class="cell">
         <h3><i></i>后台识别</h3>
         <p>前台服务每 1.5 秒读一次系统媒体会话，拿到 App 名、标题、播放状态与时长，常驻通知实时显示「正在播放：xxx」。</p>
       </div>
       <div class="cell">
+        <h3><i></i>只认正在播的视频</h3>
+        <p>只有真正处于播放状态的才会进列表——桌面上摆着的播放控件不会被误抓；音乐、播客、有声书类应用整体过滤掉。</p>
+      </div>
+      <div class="cell">
         <h3><i></i>通知兜底</h3>
-        <p>不暴露媒体会话的 App，只要有播放通知也能被识别，两条链路用「包名 + 标题」去重。</p>
+        <p>不暴露媒体会话的 App，靠播放通知兜底识别；但只有它没有媒体会话时才采信通知，避免把「发过通知」当成「正在播放」。</p>
       </div>
       <div class="cell">
         <h3><i></i>直链 / m3u8</h3>

@@ -462,16 +462,18 @@ fetch('files.json?t=' + Date.now())
           <div class="dl-row">
             ${f.pageOnly
               ? `<a class="dl-btn" href="${f.file}" target="_blank" rel="noopener">${f.cta || '📄 查看详情'}</a>`
-              : `<a class="dl-btn" href="javascript:void(0)">📲 获取应用</a>`}
+              : (f.androidOnly && f.apkMirror
+                ? `<a class="dl-btn" href="${f.apkMirror}" download>⬇ 安卓下载</a>`
+                : `<a class="dl-btn" href="javascript:void(0)">📲 获取应用</a>`)}
           </div>
           ${f.notice ? `<div class="install-tip">${f.notice}</div>` : ''}
         </div>
       </div>`;
     }).join('');
-    // 只有点「获取应用」按钮才弹出系统选择窗（工程页直连的卡片不弹）
+    // 只有点「获取应用」按钮才弹出系统选择窗（工程页直连、安卓直下的卡片不弹）
     document.querySelectorAll('.file-card').forEach(card => {
       const f = files.find(x => x.id === card.dataset.id);
-      if (!f || f.pageOnly) return;
+      if (!f || f.pageOnly || (f.androidOnly && f.apkMirror)) return;
       const btn = card.querySelector('.dl-btn');
       if (!btn) return;
       btn.addEventListener('click', e => {

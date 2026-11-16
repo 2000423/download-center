@@ -7,6 +7,10 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.RectF
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
@@ -18,6 +22,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 
@@ -32,6 +37,17 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tvNow: TextView
     private lateinit var tvCount: TextView
     private lateinit var btnToggle: TextView
+    private lateinit var btnFloat: TextView
+
+    private val swipeBg = Paint().apply {
+        isAntiAlias = true
+        color = 0xFFB3243A.toInt()
+    }
+    private val swipeText = Paint().apply {
+        isAntiAlias = true
+        color = 0xFFFFFFFF.toInt()
+        textAlign = Paint.Align.CENTER
+    }
 
     private val repoListener: () -> Unit = { runOnUiThread { render() } }
 
@@ -57,12 +73,16 @@ class MainActivity : AppCompatActivity() {
         tvNow = findViewById(R.id.tvNow)
         tvCount = findViewById(R.id.tvCount)
         btnToggle = findViewById(R.id.btnToggle)
+        btnFloat = findViewById(R.id.btnFloat)
+        swipeText.textSize = dp(13).toFloat()
 
         adapter = DetectAdapter { item, action -> onItemAction(item, action) }
         rv.layoutManager = LinearLayoutManager(this)
         rv.adapter = adapter
+        bindSwipeToDelete()
 
         btnToggle.setOnClickListener { toggleWatch() }
+        btnFloat.setOnClickListener { toggleFloat() }
         findViewById<View>(R.id.btnGrant).setOnClickListener { promptAccess() }
         findViewById<View>(R.id.btnClear).setOnClickListener { confirmClear() }
         findViewById<View>(R.id.btnDownloads).setOnClickListener {
@@ -119,7 +139,104 @@ class MainActivity : AppCompatActivity() {
         val now = MediaRepository.currentPlaying()
         tvNow.text = if (now != null) "正在播放 · " + now.title else "暂无播放中的视频"
         btnToggle.text = if (WatchingState.enabled) "停止识别" else "开始识别"
+        btnFloat.text = if (FloatWindowService.running) "关闭悬浮球" else "悬浮球"
     }
+
+    // ------------------------------------------------------------ 侧滑删除
+
+    private fun bindSwipeToDelete() {
+        val callback = object : ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.LEFT) {
+            override fun onMove(
+                recyclerView: RecyclerView,
+                viewHolder: RecyclerView.ViewHolder,
+                target: RecyclerView.ViewHolder
+            ): Boolean = false
+
+            override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
+                val position = viewHolder.bindingAdapterPosition
+                val item = adapter.itemAt(position)
+                if (item == null) {
+                    render()
+                    return
+                }
+                MediaRepository.remove(item.id)
+                Toast.makeText(
+                    this@MainActivity,
+                    "已删除「" + item.title.take(12) + "」",
+                    Toast.LENGTH_SHORT
+                ).show()
+                render()
+            }
+
+            override fun onChildDraw(
+                c: Canvas,
+                recyclerView: RecyclerView,
+                viewHolder: RecyclerView.ViewHolder,
+                dX: Float,
+                dY: Float,
+                actionState: Int,
+                isCurrentlyActive: Boolean
+            ) {
+                if (dX < 0f) {
+                    val v = viewHolder.itemView
+                    val right = v.right.toFloat()
+                    val left = right + dX
+                    val radius = dp(14).toFloat()
+                    c.drawRoundRect(
+                        RectF(left, v.top.toFloat(), right, v.bottom.toFloat()),
+                        radius, radius, swipeBg
+                    )
+                    val cy = v.top + v.height / 2f -
+                        (swipeText.descent() + swipeText.ascent()) / 2f
+                    c.drawText("删除", (left + right) / 2f, cy, swipeText)
+                }
+                super.onChildDraw(
+                    c, recyclerView, viewHolder, dX, dY, actionState, isCurrentlyActive
+                )
+            }
+        }
+        ItemTouchHelper(callback).attachToRecyclerView(rv)
+    }
+
+    // ------------------------------------------------------------ 悬浮球
+
+    private fun toggleFloat() {
+        if (FloatWindowService.running) {
+            FloatWindowService.stop(this)
+            Toast.makeText(this, "已关闭悬浮球", Toast.LENGTH_SHORT).show()
+            btnFloat.postDelayed({ render() }, 400)
+            return
+        }
+        if (!FloatWindowService.canShow(this)) {
+            AlertDialog.Builder(this)
+                .setTitle("需要「显示在其他应用上层」权限")
+                .setMessage(
+                    "开启后，桌面上会多一个圆形悬浮球：点一下就能暂停识别、回万视、看刚识别到的视频，" +
+                        "不用来回切 App。\n\n万视不会用它遮挡或读取其它 App 的内容。"
+                )
+                .setPositiveButton("去开启") { _, _ ->
+                    try {
+                        startActivity(
+                            Intent(
+                                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                Uri.parse("package:" + packageName)
+                            )
+                        )
+                    } catch (_: Exception) {
+                        Toast.makeText(this, "请到系统设置里手动开启悬浮窗权限", Toast.LENGTH_LONG)
+                            .show()
+                    }
+                }
+                .setNegativeButton("取消", null)
+                .show()
+            return
+        }
+        FloatWindowService.start(this)
+        Toast.makeText(this, "悬浮球已开启，可以拖到顺手的位置", Toast.LENGTH_SHORT).show()
+        btnFloat.postDelayed({ render() }, 500)
+    }
+
+    private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
 
     // ------------------------------------------------------------ 权限
 

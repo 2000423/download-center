@@ -211,14 +211,20 @@ class FloatWindowService : Service() {
         }
         v.findViewById<TextView>(R.id.btnFloatToggle).setOnClickListener { toggleWatch() }
 
+        val dm = resources.displayMetrics
+        val margin = dp(12)
+        // 面板宽度固定 304dp，窄屏收缩；高度交给系统量
+        val panelW = minOf(dp(304), dm.widthPixels - margin * 2)
         val lp = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.WRAP_CONTENT,
+            panelW,
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
             PixelFormat.TRANSLUCENT
         ).apply {
-            gravity = Gravity.CENTER
+            gravity = Gravity.TOP or Gravity.START
+            x = margin
+            y = margin
         }
         try {
             wm.addView(v, lp)
@@ -227,6 +233,28 @@ class FloatWindowService : Service() {
         }
         panel = v
         panelVisible = true
+
+        // 贴着悬浮球摆：右缘对齐气泡右缘，优先出现在气泡下方，放不下就翻到上方
+        val bp = bubbleParams
+        if (bp != null) {
+            v.post {
+                val ph = v.height
+                if (ph > 0 && panel === v) {
+                    var x = bp.x + dp(54) - panelW
+                    if (x < margin) x = margin
+                    if (x + panelW > dm.widthPixels - margin) x = dm.widthPixels - margin - panelW
+                    var y = bp.y + dp(54) + dp(10)
+                    if (y + ph > dm.heightPixels - margin) y = bp.y - ph - dp(10)
+                    if (y < margin) y = margin
+                    lp.x = x
+                    lp.y = y
+                    try {
+                        wm.updateViewLayout(v, lp)
+                    } catch (_: Exception) {
+                    }
+                }
+            }
+        }
         refreshList()
     }
 
@@ -273,7 +301,7 @@ class FloatWindowService : Service() {
         }
 
         p.findViewById<TextView>(R.id.btnFloatToggle)?.text =
-            if (WatchingState.enabled) "暂停识别" else "开始识别"
+            if (WatchingState.enabled) "结束识别" else "开始识别"
     }
 
     // ------------------------------------------------------------ 开关
@@ -286,7 +314,7 @@ class FloatWindowService : Service() {
         val next = !WatchingState.enabled
         WatchingState.setEnabled(this, next)
         if (next) MediaWatchService.start(this) else MediaWatchService.stop(this)
-        Toast.makeText(this, if (next) "已开始识别" else "已暂停识别", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, if (next) "已开始识别" else "已结束识别", Toast.LENGTH_SHORT).show()
         refreshList()
     }
 

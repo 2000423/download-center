@@ -26,7 +26,7 @@
 
 ## 三、编译
 
-**已出包**：`files/wanshi-v0.2.0.apk`（v0.2.0 / 2.7 MB / minSdk 26 / targetSdk 34 / 已用 `keystore/wanshi.jks` 签名）。
+**已出包**：`files/wanshi-v0.3.0.apk`（v0.3.0 / 2.7 MB / minSdk 26 / targetSdk 34 / 已用 `keystore/wanshi.jks` 签名）。
 从下载中心点「获取应用」即可直接下载安装，不需要自己编译。下面是想改代码时的编译方式。
 
 环境要求：

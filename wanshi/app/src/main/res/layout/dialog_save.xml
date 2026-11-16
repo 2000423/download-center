@@ -59,7 +59,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="14dp"
         android:lineSpacingExtra="2dp"
-        android:text="小提示：在播放 App 里点「分享 → 复制链接」，再回来粘贴即可。加密流（AES）无法下载。"
+        android:text="两种给链接的方式：① 在原视频 App 点「分享」→ 选「万视」；② 点「复制链接」后回到万视，会自动带入。加密流（AES）无法下载。"
         android:textColor="@color/muted"
         android:textSize="11sp" />
 

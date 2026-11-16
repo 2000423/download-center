@@ -60,6 +60,9 @@ class MediaWatchService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        // 关键：系统回收进程后重启本服务时不会经过任何 Activity，
+        // 必须在这里把持久化的开关状态读回来，否则会误判为「已停止」而自杀。
+        WatchingState.init(this)
         sessionManager = getSystemService(Context.MEDIA_SESSION_SERVICE) as MediaSessionManager
         NotificationHelper.createChannels(this)
     }

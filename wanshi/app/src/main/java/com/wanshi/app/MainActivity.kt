@@ -32,6 +32,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var rv: RecyclerView
     private lateinit var emptyView: View
     private lateinit var permBanner: View
+    private lateinit var clipBanner: View
+    /** 上次已消费的剪贴板链接，避免同一条反复弹提示 */
+    private var lastClip: String = ""
     private lateinit var dot: View
     private lateinit var tvStatus: TextView
     private lateinit var tvNow: TextView
@@ -68,6 +71,7 @@ class MainActivity : AppCompatActivity() {
         rv = findViewById(R.id.rv)
         emptyView = findViewById(R.id.emptyView)
         permBanner = findViewById(R.id.permBanner)
+        clipBanner = findViewById(R.id.clipBanner)
         dot = findViewById(R.id.dot)
         tvStatus = findViewById(R.id.tvStatus)
         tvNow = findViewById(R.id.tvNow)
@@ -91,6 +95,9 @@ class MainActivity : AppCompatActivity() {
         findViewById<View>(R.id.btnSaveLink).setOnClickListener {
             showSaveDialog("", "")
         }
+        findViewById<View>(R.id.btnClipSave).setOnClickListener {
+            showSaveDialog(clipboardUrl(), "")
+        }
 
         askNotificationPermission()
         handleShareIntent(intent)
@@ -108,7 +115,19 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        // 开关还开着、权限也在，但服务被系统回收了 → 拉起来，保证「划走再回来还在识别」
+        if (WatchingState.enabled && hasListenerAccess() && !MediaWatchService.running) {
+            MediaWatchService.start(this)
+        }
         render()
+        maybeShowClipBanner()
+    }
+
+    /** 剪贴板里刚复制的链接还没保存过 → 顶部亮一条横幅，一键带入保存 */
+    private fun maybeShowClipBanner() {
+        val url = clipboardUrl()
+        clipBanner.visibility =
+            if (url.isNotBlank() && url != lastClip) View.VISIBLE else View.GONE
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -382,6 +401,7 @@ class MainActivity : AppCompatActivity() {
                 if (normalized == null) {
                     etUrl.error = "请粘贴有效的视频链接"
                 } else {
+                    lastClip = normalized
                     DownloadService.enqueue(this, normalized, etName.text.toString().trim())
                     dialog.dismiss()
                     Toast.makeText(this, "已加入下载列表", Toast.LENGTH_SHORT).show()
@@ -390,6 +410,8 @@ class MainActivity : AppCompatActivity() {
             }
         }
         dialog.show()
+        // 只要保存弹窗打开过一次，这条剪贴板链接就算被消费，不再重复亮横幅
+        if (startUrl.isNotBlank()) lastClip = startUrl
     }
 
     private fun clipboardUrl(): String {

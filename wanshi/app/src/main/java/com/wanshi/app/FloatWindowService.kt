@@ -65,6 +65,7 @@ class FloatWindowService : Service() {
     private var bubble: View? = null
     private var bubbleParams: WindowManager.LayoutParams? = null
     private var panel: View? = null
+    private var panelParams: WindowManager.LayoutParams? = null
     private var panelVisible = false
     private val main = Handler(Looper.getMainLooper())
 
@@ -176,6 +177,8 @@ class FloatWindowService : Service() {
                         wm.updateViewLayout(v, lp)
                     } catch (_: Exception) {
                     }
+                    // 面板开着时实时跟着球走
+                    if (panelVisible) positionPanel()
                 }
 
                 MotionEvent.ACTION_UP -> {
@@ -232,35 +235,64 @@ class FloatWindowService : Service() {
             return
         }
         panel = v
+        panelParams = lp
         panelVisible = true
 
-        // 贴着悬浮球摆：右缘对齐气泡右缘，优先出现在气泡下方，放不下就翻到上方
-        val bp = bubbleParams
-        if (bp != null) {
-            v.post {
-                val ph = v.height
-                if (ph > 0 && panel === v) {
-                    var x = bp.x + dp(54) - panelW
-                    if (x < margin) x = margin
-                    if (x + panelW > dm.widthPixels - margin) x = dm.widthPixels - margin - panelW
-                    var y = bp.y + dp(54) + dp(10)
-                    if (y + ph > dm.heightPixels - margin) y = bp.y - ph - dp(10)
-                    if (y < margin) y = margin
-                    lp.x = x
-                    lp.y = y
-                    try {
-                        wm.updateViewLayout(v, lp)
-                    } catch (_: Exception) {
-                    }
-                }
+        // 高度量出来后贴到悬浮球旁边；之后拖动悬浮球时由 positionPanel() 实时跟随
+        v.post { positionPanel() }
+        refreshList()
+    }
+
+    /**
+     * 把面板摆在悬浮球旁边（球下方优先，放不下翻到球上方），左右对齐气泡右缘。
+     * 拖动悬浮球时每帧调用，面板跟着球走，且永远不压住球。
+     */
+    private fun positionPanel() {
+        val p = panel ?: return
+        val lp = panelParams ?: return
+        val bp = bubbleParams ?: return
+        val v = bubble ?: return
+        val dm = resources.displayMetrics
+        val margin = dp(12)
+        val gap = dp(10)
+        val pw = lp.width
+        // 面板还没量出高度时先给个估计值，量出来后下一帧自然修正
+        val ph = if (p.height > 0) p.height else dp(420)
+
+        var x = bp.x + dp(54) - pw
+        if (x < margin) x = margin
+        if (x + pw > dm.widthPixels - margin) x = dm.widthPixels - margin - pw
+
+        var y = bp.y + dp(54) + gap
+        if (y + ph > dm.heightPixels - margin) y = bp.y - ph - gap
+        if (y < margin) y = margin
+
+        if (lp.x != x || lp.y != y) {
+            lp.x = x
+            lp.y = y
+            try {
+                wm.updateViewLayout(p, lp)
+            } catch (_: Exception) {
             }
         }
-        refreshList()
+        // 顺带把球也夹在屏幕内，别拖出屏幕找不回来
+        val size = dp(54)
+        val bx = bp.x.coerceIn(margin / 2, dm.widthPixels - size - margin / 2)
+        val by = bp.y.coerceIn(margin / 2, dm.heightPixels - size - margin / 2)
+        if (bx != bp.x || by != bp.y) {
+            bp.x = bx
+            bp.y = by
+            try {
+                wm.updateViewLayout(v, bp)
+            } catch (_: Exception) {
+            }
+        }
     }
 
     private fun hidePanel() {
         val p = panel ?: return
         panel = null
+        panelParams = null
         panelVisible = false
         try {
             wm.removeView(p)

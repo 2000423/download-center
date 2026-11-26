@@ -1,0 +1,3137 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>横屏城市 · 等距视角 + 交通停车可交互预览</title>
+<style>
+  * { box-sizing: border-box; }
+  /* 全局字体与滚动条：中文优先 Noto Sans SC，细滚动条与子工具栏统一（2026-11-25） */
+  html, body, button, input { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif; }
+  html { scrollbar-width: thin; scrollbar-color: rgba(150,168,196,.45) transparent; }
+  body::-webkit-scrollbar, .side::-webkit-scrollbar, .toolbar::-webkit-scrollbar { width: 8px; height: 8px; }
+  body::-webkit-scrollbar-thumb, .side::-webkit-scrollbar-thumb, .toolbar::-webkit-scrollbar-thumb { background: rgba(150,168,196,.42); border-radius: 999px; }
+  body::-webkit-scrollbar-track, .side::-webkit-scrollbar-track, .toolbar::-webkit-scrollbar-track { background: transparent; }
+  body {
+    margin: 0; padding: 24px; background: #0F1622; color: #E7EDF7;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  }
+  .stage { display: flex; gap: 28px; align-items: flex-start; justify-content: center; flex-wrap: wrap; }
+  /* 侧边玩法说明改深色卡片：不再白底与游戏深色 HUD 割裂（用户强烈要求） */
+  .side { width: 300px; padding: 20px 20px 22px; background: #151E2E; border: 1px solid rgba(255,255,255,.08);
+    border-radius: 18px; box-shadow: 0 18px 44px rgba(0,0,0,.28); }
+  .side h1 { font-size: 20px; margin: 0 0 12px; color: #F4F7FC; }
+  .side h2 { font-size: 14px; color: #8FC0FF; margin: 18px 0 6px; }
+  .side p { font-size: 13px; line-height: 1.8; color: #A9B6CA; margin: 0 0 16px; }
+  .side p b { color: #E7EDF7; }
+  .side ol, .side ul { font-size: 13px; line-height: 1.8; color: #A9B6CA; margin: 0 0 14px; padding-left: 20px; }
+  .side li { margin-bottom: 6px; }
+  .side li b { color: #E7EDF7; }
+  .side .note { font-size: 12px; color: #7F8DA3; margin-top: 14px; }
+  .ctrl { background: rgba(10,16,27,.62); border: 1px solid rgba(255,255,255,.07); border-radius: 14px; padding: 16px 18px; }
+  .row { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,.08); }
+  .row:last-child { border-bottom: 0; }
+  .row span { color: #8492A8; flex-shrink: 0; }
+  .row b { font-weight: 600; text-align: right; color: #E7EDF7; }
+  .ctrl button { width: 100%; margin-top: 12px; padding: 10px; border: 0; border-radius: 10px; font-size: 13px; cursor: pointer; background: #3D6DFF; color: #FFF; }
+  .ctrl button.ghost { background: rgba(255,255,255,.1); color: #C9D3E2; }
+  /* 建造状态四色统一图例（侧边说明 / 地块详情共用同一套） */
+  .state-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 10px; font-size: 11px; color: #A9B6CA; }
+  .state-legend span { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+  .state-legend i { width: 8px; height: 8px; border-radius: 50%; box-shadow: 0 0 0 2px rgba(255,255,255,.14); flex-shrink: 0; }
+  .state-legend .lg-ok { background: #4FD07E; }
+  .state-legend .lg-warn { background: #FFC72C; }
+  .state-legend .lg-debt { background: #FF8A3D; }
+  .state-legend .lg-bad { background: #E5484D; }
+
+  .phone-land {
+    position: relative;
+    /* 高度必须容纳 HUD 74 + 画布 380 + 提示 20 + 工具栏 62 = 536，加 8px 边框 ×2 */
+    width: 960px; height: 552px; background: #1B2A24;
+    border: 8px solid #1A1D26; border-radius: 30px;
+    box-shadow: 0 24px 60px rgba(26,29,38,.2);
+    overflow: hidden; display: flex; flex-direction: column; flex-shrink: 0;
+  }
+  .hud {
+    height: 74px; flex-shrink: 0; display: flex; align-items: center; gap: 12px;
+    padding: 0 16px; background: #1E2A44; color: #FFF;
+  }
+  .brand { font-size: 15px; font-weight: 600; white-space: nowrap; }
+  .stats { display: flex; gap: 14px; }
+  .stat { display: flex; align-items: center; gap: 5px; white-space: nowrap; }
+  .stat-label { font-size: 14px; }
+  .stat-label--cn { font-size: 12px; color: rgba(255,255,255,.68); white-space: nowrap; }
+  .stat-value { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  /* 资金三档预警：健康白 / 低于 2000 琥珀 / 负债红 / 破产红线深红闪烁（2026-11-25） */
+  .stat-value.money-warn { color: #FFD075; }
+  .stat-value.money-danger { color: #FF8B8B; }
+  .stat-value.money-critical { color: #FF5555; animation: moneyPulse 1.1s ease-in-out infinite; }
+  @keyframes moneyPulse { 50% { opacity: .55; } }
+  /* 幸福文字评级：紧跟数值的小字 */
+  .stat-rank { font-size: 10px; color: rgba(255,255,255,.62); white-space: nowrap; }
+  .stat-rank.rank-bad { color: #FF9A8B; }
+  .stat-rank.rank-mid { color: #FFD075; }
+  .stat-rank.rank-good { color: #7BE3A6; }
+  /* 拥堵：小红点 + 数字，与叠加层拥堵热力同色 */
+  .jam { font-size: 11px; font-weight: 700; color: #F55A4E; display: inline-flex; align-items: center; gap: 4px; }
+  .jam::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: #F55A4E; box-shadow: 0 0 0 3px rgba(245,90,78,.2); }
+  .clock { display: flex; align-items: center; gap: 5px; padding-right: 10px; border-right: 1px solid rgba(255,255,255,.18); }
+  .clock-time { font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; color: #FFD98A; }
+  .clock.night .clock-time { color: #9FB6FF; }
+  .clock-icon { font-size: 13px; }
+  .income { font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .income.up { color: #6FE3A0; }
+  .income.down { color: #FF8B8B; }
+  .rci-group { display: flex; gap: 6px; margin-left: auto; }
+  .rci { display: flex; align-items: center; gap: 3px; font-size: 11px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .rci-name { font-size: 10px; color: rgba(255,255,255,.72); white-space: nowrap; flex-shrink: 0; }
+  .stat--tap { border-bottom: 1px dashed rgba(255,255,255,.4); cursor: pointer; padding-bottom: 1px; }
+  .rci .bar { width: 15px; }
+  #infoLines .row { display: flex; font-size: 13px; margin-top: 6px; color: #3A4150; }
+  /* 需求详情里的彩色进度条（优化 #2）：0~100 带 34/67 两道密度分界刻度 */
+  .dbar-wrap { display: flex; align-items: center; gap: 10px; width: 100%; }
+  .dbar { position: relative; flex: 1; height: 9px; border-radius: 5px; background: rgba(255,255,255,.18); overflow: hidden; }
+  .dbar-fill { display: block; height: 100%; border-radius: 5px; transition: width .25s; }
+  .dbar i { position: absolute; top: 0; bottom: 0; width: 1px; background: rgba(255,255,255,.42); }
+  .dbar-val { font-size: 12px; font-variant-numeric: tabular-nums; color: rgba(242,246,244,.92); font-weight: 600; }
+  /* 需求强度颜色预警：<34 灰 / 34~67 黄 / 67+ 绿 */
+  .dbar-tier { font-size: 10px; padding: 1px 5px; border-radius: 6px; font-weight: 600; }
+  .dbar-tier.tier-0 { color: #C7CFDB; background: rgba(160,172,192,.22); }
+  .dbar-tier.tier-1 { color: #FFD075; background: rgba(255,208,117,.16); }
+  .dbar-tier.tier-2 { color: #7BE3A6; background: rgba(123,227,166,.16); }
+  .dbar-scale { display: flex; justify-content: space-between; width: 100%; font-size: 10px; color: rgba(242,246,244,.55); margin-top: 2px; }
+  /* 审计 #23：金币/人口/需求悬停面板独立类名，不再借用 inspect 弹窗类（避免两套弹窗混淆） */
+  .info-hover-panel {
+    position: absolute; left: 36px; top: 92px; width: 330px;
+    background: rgba(16,24,22,.78); color: #F2F6F4;
+    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    box-shadow: 0 10px 30px rgba(0,0,0,.25); pointer-events: none;
+    border-radius: 16px; padding: 22px 24px; display: none; z-index: 11;
+  }
+  .info-hover-panel.show { display: block; }
+  .info-hover-panel h3 { color: #F2F6F4; margin: 0 0 6px; font-size: 17px; display: flex; justify-content: space-between; }
+  .info-hover-panel h3 span { color: rgba(242,246,244,.7); }
+  .info-hover-panel #infoLines .row { color: rgba(242,246,244,.92); }
+  .rci { cursor: default; }
+  .bar { width: 18px; height: 8px; border-radius: 4px; background: rgba(255,255,255,.16); overflow: hidden; flex-shrink: 0; }
+  .bar-fill { height: 100%; border-radius: 4px; }
+  .bar-fill.r { background: #5FCF86; }
+  .bar-fill.c { background: #7FB6FF; }
+  .bar-fill.i { background: #F5AE63; }
+  .bar-fill.o { background: #B9A6E8; }
+  .tool-arrow { font-size: 11px; opacity: .7; }
+  .subtool-bar {
+    /* 紧贴工具栏上沿（62px）：展开子工具时把提示行盖住，不再把底栏切成三段 */
+    position: absolute; left: 0; right: 0; bottom: 62px; z-index: 20;
+    display: none; align-items: center; gap: 6px; padding: 8px 10px;
+    background: rgba(22,32,47,.96); overflow-x: auto;
+    scrollbar-width: thin;                 /* 审计 #24：细滚动条，移动端好滑 */
+    scrollbar-color: rgba(255,255,255,.35) transparent;
+  }
+  .subtool-bar::-webkit-scrollbar { height: 6px; }
+  .subtool-bar::-webkit-scrollbar-thumb { background: rgba(255,255,255,.35); border-radius: 3px; }
+  .subtool-bar::-webkit-scrollbar-track { background: transparent; }
+  .subtool-bar.show { display: flex; }
+  .subtool-bar .subtool-label { font-size: 12px; color: rgba(255,255,255,.55); white-space: nowrap; flex-shrink: 0; padding-right: 4px; }
+  .subtool-bar .tool { background: #2A3A52; }
+  /* 横向滚动提示：两端淡入渐变，按实际滚动位置显示（子工具栏专属，不挡点击） */
+  .subtool-fade {
+    position: absolute; bottom: 62px; z-index: 21; width: 28px; height: 56px;
+    display: none; pointer-events: none;
+  }
+  .subtool-fade.show { display: block; }
+  .subtool-fade--left { left: 0; background: linear-gradient(90deg, rgba(22,32,47,.96), transparent); }
+  .subtool-fade--right { right: 0; background: linear-gradient(270deg, rgba(22,32,47,.96), transparent); }
+  /* 子工具密度小字 L1/L2/L3 + 选中态加强 */
+  .tool-lv { font-size: 9px; font-weight: 700; color: rgba(255,255,255,.52); letter-spacing: .4px; }
+  .tool.active .tool-lv { color: rgba(255,255,255,.92); }
+  .subtool-bar .tool.active { background: #3569F0; box-shadow: inset 0 0 0 1px rgba(255,255,255,.34); }
+  /* 工具价格：正常白 / 将透支橙 / 已破产红 */
+  .tool-price.price-debt { color: #FFB765; opacity: 1; }
+  .tool-price.price-bad { color: #FF8B8B; opacity: 1; }
+  .canvas-wrap { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 0; position: relative; }
+  #mapCanvas { width: 940px; height: 380px; display: block; cursor: crosshair; }
+  .game-hint {
+    height: 20px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+    background: #16202F; color: rgba(255,255,255,.5); font-size: 11px; white-space: nowrap; overflow: hidden;
+  }
+  /* 子工具浮层展开时提示行隐藏（占位保留，画布不跳动） */
+  .game-hint.hint-hidden { visibility: hidden; }
+  .toolbar {
+    height: 62px; flex-shrink: 0; display: flex; align-items: center; gap: 6px;
+    padding: 0 10px; background: #16202F; overflow-x: auto;
+  }
+  .tool {
+    display: flex; align-items: center; gap: 6px; padding: 10px 12px;
+    border-radius: 10px; background: #243247; color: #C9D2E0; cursor: pointer; flex-shrink: 0;
+  }
+  .tool.active { background: #3D6DFF; color: #FFF; }
+  .swatch { width: 20px; height: 20px; border-radius: 6px; }
+  .tool-name { font-size: 13px; white-space: nowrap; }
+  .tool-price { font-size: 11px; opacity: .75; }
+
+  .hover-tip {
+    position: fixed; z-index: 30; display: none; flex-direction: column; gap: 3px;
+    max-width: 300px; padding: 10px 13px; border-radius: 10px; pointer-events: none;
+    background: rgba(18,26,39,.94); color: #E8ECF3; box-shadow: 0 12px 30px rgba(0,0,0,.3);
+  }
+  .hover-tip.show { display: flex; }
+  .hover-title { font-size: 13px; font-weight: 600; color: #FFF; }
+  /* 长提示（资金不足 / 未连通）自动换行，不再挤在一行溢出（2026-11-25） */
+  .hover-line { font-size: 11px; color: #B8C2D2; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+  /* 建造预览状态行（2026-11-23 优化 #1）：绿=可建 / 黄=未连通 / 红=不可建 / 橙=将透支 */
+  .hover-state { display: flex; align-items: flex-start; gap: 5px; font-size: 11px; font-weight: 600; line-height: 1.45; white-space: normal; overflow-wrap: anywhere; }
+  .hover-state i { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; box-shadow: 0 0 0 2px rgba(255,255,255,.14); }
+  .hover-state.ok { color: #7BE3A6; }
+  .hover-state.ok i { background: #4FD07E; }
+  .hover-state.warn { color: #FFD75E; }
+  .hover-state.warn i { background: #FFC72C; }
+  .hover-state.bad { color: #FF8F8F; }
+  .hover-state.bad i { background: #E5484D; }
+  .hover-state.debt { color: #FFAE6B; }
+  .hover-state.debt i { background: #FF8A3D; }
+  /* 详情因子条（优化 #2）：一眼看出幸福扣分项 */
+  .fbars { margin-top: 14px; padding-top: 12px; border-top: 1px solid #EEF1F5; }
+  .fbars-title { font-size: 12px; color: #8A8F99; margin-bottom: 8px; }
+  .fbar { display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: 12px; color: #4A5160; }
+  .fbar-name { width: 62px; flex-shrink: 0; color: #6B7280; }
+  .fbar-track { flex: 1; height: 7px; border-radius: 4px; background: #EDF0F5; overflow: hidden; }
+  .fbar-fill { display: block; height: 100%; border-radius: 4px; transition: width .25s; }
+  .fbar-val { width: 44px; text-align: right; flex-shrink: 0; font-variant-numeric: tabular-nums; color: #3A4150; }
+  /* 污染 / 噪音 >0.5 加粗提醒（2026-11-25） */
+  .fbar-val--hot { font-weight: 800; color: #FF6A4D; }
+  /* × 关闭按钮 hover 反馈 */
+  #insClose:hover, #settingsClose:hover, #bankruptClose:hover, .info-close:hover { opacity: .5; }
+  .inspect { max-width: 92vw; }
+  .inspect .state-legend { color: #6B7280; margin-top: 16px; padding-top: 10px; border-top: 1px solid #EEF1F5; }
+  /* 可视化叠加层（优化 #3 / 2026-11-24 用户要求「不要合并按钮，分开」）：
+     每种模式各自一枚独立按钮，点哪枚切哪档；右侧再单独一枚「返回主界面」 */
+  .canvas-tools {
+    position: absolute; right: 12px; top: 10px; z-index: 6;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .ct-label {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 11px; letter-spacing: 1px; color: rgba(242,246,244,.74);
+    user-select: none; padding-right: 2px;
+  }
+  .ct-key {
+    font-style: normal; font-size: 9px; line-height: 1; padding: 2px 4px;
+    border-radius: 4px; color: rgba(242,246,244,.8); background: rgba(255,255,255,.12);
+    border: 1px solid rgba(255,255,255,.16);
+  }
+  .overlay-btn {
+    padding: 5px 10px; border-radius: 999px; line-height: 1;
+    background: rgba(16,24,22,.66); color: rgba(242,246,244,.86); font-size: 11px;
+    cursor: pointer; user-select: none; border: 1px solid rgba(255,255,255,.12);
+    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    transition: background-color .16s, color .16s, border-color .16s;
+  }
+  .overlay-btn:hover { background: rgba(61,109,255,.55); color: #FFF; border-color: rgba(255,255,255,.3); }
+  .overlay-btn.active { color: #FFF; background: rgba(61,109,255,.9); border-color: rgba(255,255,255,.34); }
+  .ct-sep { width: 1px; height: 14px; margin: 0 2px; background: rgba(255,255,255,.22); }
+  .overlay-btn--home:hover {
+    background: rgba(198,74,54,.92); border-color: rgba(255,196,186,.42); color: #FFF;
+  }
+  .overlay-legend {
+    position: absolute; right: 12px; top: 44px; z-index: 6; display: none;
+    flex-direction: column; gap: 4px; padding: 8px 10px; border-radius: 10px;
+    background: rgba(16,24,22,.72); font-size: 10px; color: rgba(242,246,244,.86);
+    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); pointer-events: none;
+  }
+  .overlay-legend.show { display: flex; /* 位置由 moveOverlayLegend 跟随鼠标，默认仍是右上角 */ }
+  .overlay-legend { transition: left .08s linear, top .08s linear; }
+  .overlay-legend span { display: flex; align-items: center; gap: 6px; }
+  .overlay-legend i { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+
+  .mask { position: fixed; inset: 0; background: rgba(10,16,22,.45); display: none; z-index: 10; }
+  .mask.show { display: block; }
+  .inspect {
+    position: fixed; left: 50%; top: 50%; transform: translate(-50%,-50%);
+    width: 380px; background: #FFF; border-radius: 16px; padding: 22px 24px;
+    display: none; z-index: 11; box-shadow: 0 24px 60px rgba(0,0,0,.28);
+  }
+  .inspect.show { display: block; }
+  .inspect h3 { margin: 0 0 14px; font-size: 17px; display: flex; justify-content: space-between; }
+  .inspect h3 span { cursor: pointer; color: #8A8F99; }
+  .inspect .row { font-size: 13px; }
+  .ok { color: #2E9E63 !important; }
+  .bad { color: #D9534F !important; }
+  .toast {
+    position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%);
+    background: rgba(26,29,38,.88); color: #FFF; font-size: 13px;
+    padding: 10px 18px; border-radius: 20px; opacity: 0; transition: opacity .25s;
+    pointer-events: none; z-index: 20;
+  }
+  .toast.show { opacity: 1; pointer-events: auto; cursor: help; }  /* 鼠标悬停可暂停消失 */
+
+  /* 破产弹窗（2026-11-23 bug 修复 #1）：跌破破产阈值锁建造时弹出 */
+  .bankrupt-box {
+    position: fixed; left: 50%; top: 50%; transform: translate(-50%,-50%);
+    width: 360px; background: #FFF; border-radius: 16px; padding: 22px 24px;
+    display: none; z-index: 40; box-shadow: 0 24px 60px rgba(0,0,0,.28);
+    border-top: 4px solid #D9534F;
+  }
+  .bankrupt-box.show { display: block; }
+  .bankrupt-box h3 { margin: 0 0 10px; font-size: 17px; color: #D9534F; }
+  .bankrupt-box p { margin: 0 0 14px; font-size: 13px; color: #555C66; line-height: 1.6; }
+  .bankrupt-box button {
+    width: 100%; padding: 10px 0; border: none; border-radius: 10px;
+    background: #3D6DFF; color: #FFF; font-size: 14px; cursor: pointer;
+  }
+
+  /* ============ 开局面（2026-11-23）：背景实时示例城 + 菜单浮层 ============ */
+  /* 浮层贴在 .phone-land 内（position:absolute），盖住 HUD / 画布 / 工具栏 */
+  .start-menu {
+    position: absolute; inset: 0; z-index: 50;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .start-menu.hide { display: none; }
+  /* 开局面期间隐藏游戏 UI（HUD / 提示 / 工具栏 / 叠加层按钮），背景只留城市 */
+  .phone-land.menu-open .hud,
+  .phone-land.menu-open .game-hint,
+  .phone-land.menu-open .toolbar,
+  .phone-land.menu-open .subtool-bar,
+  .phone-land.menu-open .subtool-fade,
+  .phone-land.menu-open .canvas-tools,
+  .phone-land.menu-open .overlay-legend { visibility: hidden; }
+  .start-scrim {
+    position: absolute; inset: 0;
+    background: linear-gradient(180deg, rgba(8,14,26,.62), rgba(8,14,26,.38) 45%, rgba(8,14,26,.68));
+  }
+  .start-inner {
+    position: relative; display: flex; flex-direction: column;
+    align-items: center; gap: 12px;
+  }
+  .start-title {
+    font-size: 50px; font-weight: 800; color: #FFF; letter-spacing: 12px;
+    text-shadow: 0 4px 26px rgba(0,0,0,.6); text-indent: 12px;
+  }
+  .start-sub { font-size: 12px; color: rgba(255,255,255,.78); letter-spacing: 3px; margin-bottom: 4px; }
+  .start-ver { font-size: 10px; color: rgba(255,255,255,.46); letter-spacing: 2px; margin-bottom: 14px; font-variant-numeric: tabular-nums; }
+  /* 菜单按钮：默认全部同款深色描边，鼠标移到哪个哪个亮蓝（2026-11-24 用户要求：
+     不要静态只高亮「有限资金」） */
+  .start-btn {
+    min-width: 290px; padding: 11px 28px; font-size: 14px; letter-spacing: 4px;
+    color: #FFF; background: rgba(12,20,34,.62);
+    border: 1px solid rgba(255,255,255,.38); border-radius: 999px; cursor: pointer;
+    font-family: inherit;
+    transition: background-color .16s ease, border-color .16s ease, box-shadow .16s ease, transform .16s ease;
+  }
+  .start-btn:hover,
+  .start-btn:focus-visible {
+    background: rgba(46,120,220,.9); border-color: rgba(180,214,255,.9);
+    box-shadow: 0 6px 24px rgba(46,120,220,.45);
+    transform: scale(1.02);
+    outline: none;
+  }
+  .start-btn:active { background: rgba(36,100,196,.95); transform: scale(.99); }
+
+  /* 设置弹窗（2026-11-25：五组选项，全部只影响画面/交互/显示上限） */
+  .settings-mask {
+    position: absolute; inset: 0; z-index: 60; background: rgba(0,0,0,.45); display: none;
+  }
+  /* 2026-11-25 修「文字被裁」：原来 body 用 82vh（浏览器视口）算高，面板却被手机框
+     440px 的 overflow:hidden 裁掉 ~300px，滚动条也落在框外。改成 flex 列 + 父容器百分比，
+     并排成两列，17 项在 552px 机身内一屏展示，不需要滚。 */
+  .settings-box {
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%);
+    width: 780px; max-width: calc(100% - 40px); max-height: calc(100% - 28px);
+    z-index: 61; display: none; flex-direction: column;
+    background: #101826; border: 1px solid rgba(255,255,255,.22); border-radius: 14px;
+    box-shadow: 0 24px 60px rgba(0,0,0,.35); overflow: hidden;
+  }
+  .settings-box.show { display: flex; }
+  .settings-mask.show { display: block; }
+  .settings-head {
+    display: flex; justify-content: space-between; align-items: center;
+    flex: 0 0 auto; padding: 10px 18px; color: #FFF; font-weight: 700;
+    border-bottom: 1px solid rgba(255,255,255,.12);
+  }
+  .settings-head-acts { display: flex; align-items: center; gap: 10px; }
+  #settingsClose { cursor: pointer; opacity: .8; font-size: 18px; }
+  .settings-body {
+    flex: 1 1 auto; min-height: 0; overflow-y: auto;
+    padding: 6px 18px 10px;
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 18px; align-content: start;
+    scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.35) transparent;
+  }
+  .settings-body::-webkit-scrollbar { width: 6px; }
+  .settings-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,.35); border-radius: 3px; }
+  .set-group { padding: 7px 0 3px; border-bottom: 1px solid rgba(255,255,255,.08); }
+  .set-group:last-of-type { border-bottom: 0; }
+  .set-group-title { font-size: 11px; letter-spacing: 2px; color: #8FC0FF; font-weight: 700; margin-bottom: 4px; }
+  .set-row { display: flex; align-items: center; min-height: 28px; gap: 10px; color: #E6EDF6; font-size: 12px; }
+  .set-row-main { flex: 1; min-width: 0; }
+  .set-row-name { display: block; line-height: 1.35; }
+  .set-row-hint { display: block; color: #8493A8; font-size: 10px; line-height: 1.25; margin-top: 1px; }
+  .set-switch {
+    flex: 0 0 auto; width: 34px; height: 19px; border-radius: 999px; cursor: pointer;
+    background: #39445A; border: 1px solid rgba(255,255,255,.14); position: relative; transition: background .15s;
+  }
+  .set-switch::after {
+    content: ''; position: absolute; left: 2px; top: 2px; width: 13px; height: 13px;
+    border-radius: 50%; background: #D7E0EC; transition: transform .15s;
+  }
+  .set-switch.on { background: #2E78DC; border-color: rgba(180,214,255,.7); }
+  .set-switch.on::after { transform: translateX(15px); background: #FFF; }
+  .set-seg { display: flex; flex: 0 0 auto; gap: 3px; background: rgba(255,255,255,.06); padding: 2px; border-radius: 7px; }
+  .set-seg button {
+    border: 0; background: transparent; color: #9FADC1; font-size: 11px; cursor: pointer;
+    padding: 4px 8px; border-radius: 5px; font-family: inherit;
+  }
+  .set-seg button.active { background: rgba(46,120,220,.85); color: #FFF; }
+  .set-range { display: flex; flex: 0 0 auto; align-items: center; gap: 8px; }
+  .set-range input { width: 118px; accent-color: #2E78DC; }
+  .set-range b { width: 46px; text-align: right; font-variant-numeric: tabular-nums; color: #BFE0FF; }
+  /* 恢复默认放在标题栏，省出一整行高度，让五组选项一屏排完 */
+  #settingsReset {
+    border: 1px solid rgba(255,255,255,.2); background: rgba(255,255,255,.06); color: #D8E2F0;
+    padding: 4px 10px; border-radius: 7px; font-size: 11px; cursor: pointer; font-family: inherit;
+  }
+  #settingsReset:hover { background: rgba(46,120,220,.6); color: #FFF; }
+
+  /* 返回主界面二次确认（2026-11-24 用户要求）：贴在机框内的确认弹窗 */
+  .confirm-mask { position: absolute; inset: 0; z-index: 45; background: rgba(6,10,18,.5); display: none; }
+  .confirm-mask.show { display: block; }
+  .confirm-box {
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%);
+    width: 300px; padding: 20px 22px 16px; z-index: 46; display: none;
+    background: #101826; border: 1px solid rgba(255,255,255,.18); border-radius: 14px;
+    box-shadow: 0 24px 60px rgba(0,0,0,.45); color: #FFF;
+  }
+  .confirm-box.show { display: block; }
+  .confirm-title { font-size: 15px; font-weight: 700; letter-spacing: 2px; }
+  .confirm-text { margin-top: 8px; font-size: 12px; line-height: 1.75; color: rgba(255,255,255,.72); }
+  .confirm-acts { display: flex; gap: 10px; margin-top: 18px; }
+  .confirm-acts button {
+    flex: 1; padding: 9px 0; font-size: 13px; font-family: inherit; color: #FFF; cursor: pointer;
+    border-radius: 10px; border: 1px solid rgba(255,255,255,.26); background: rgba(255,255,255,.06);
+    transition: background-color .14s, border-color .14s;
+  }
+  .confirm-acts button:hover { background: rgba(255,255,255,.15); }
+  .confirm-acts .confirm-ok { background: #3D6DFF; border-color: #5E86FF; }
+  .confirm-acts .confirm-ok:hover { background: #4E7BFF; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <aside class="side">
+    <h1>一局之城 · 游戏玩法</h1>
+    <p>你是一位新任市长：手里只有一块四周都是高速的空地和 <b>¥ 15,000</b> 启动资金。把小镇一步步做大，人口越多、幸福越高，每秒进账越快。<b>本局没有存档</b>——退出后重新进入需从头再来，所以这一局就是你的全部机会。</p>
+
+    <h2>上手五步</h2>
+    <ol>
+      <li><b>铺路接高速</b>：先用「道路」把路网接到地图上方的高速，没接高速的路网是死的，建筑也放不了（只有道路可以自由铺）。</li>
+      <li><b>建住宅</b>：在「生活类」里选住宅（低/中/高密度），沿路摆放，市民才会搬进来；每户自带一辆车。</li>
+      <li><b>补服务</b>：水电局、警局、消防、诊所、学校、垃圾场、墓地……服务建筑要经路网连到居民区才有覆盖，且一所只能服务有限人口。</li>
+      <li><b>造产业</b>：商业、工业、办公楼提供岗位和税收，但工业、垃圾场会产生污染噪音，别贴着住宅盖。</li>
+      <li><b>看需求补短板</b>：顶部四条需求条亮起来就是市面在缺东西，点开能看「缺什么」；点金币、人口还能看收支构成和人口来源。</li>
+    </ol>
+
+    <h2>核心规则</h2>
+    <ul>
+      <li><b>幸福 0~100</b>：开局只有个位数到十几分，服务、教育、就业、环境都到位才能冲上 60~80——别指望一开局就高幸福。</li>
+      <li><b>密度定死</b>：低/中/高密度在建造时就确定，之后永不升级、不降级。</li>
+      <li><b>拆除返还 30%</b>：按当前密度建造价的 30% 返还（公园、道路除外；停车场与服务建筑按基础价返还）。</li>
+      <li><b>时间节奏</b>：一昼夜 5 分钟，每 2 秒结算一次收益，车辆 120ms 走一步；堵车会拖累商业和工业。</li>
+      <li><b>交通与停车</b>：路边禁止停车，车位只能在家或停车场（6 位），满位就堵在路上。</li>
+      <li><b>大城更贵</b>：道路每格要维护费，人口 500 起维护费开始放大（最多 ×3）——后期不是躺赚，要精打细算。</li>
+      <li><b>大城更挤</b>：人口超过 400 后拥挤开始压住宅幸福（最多 -15），只有公园能缓解——留出绿地才养得起大城市。</li>
+    </ul>
+
+    <h2>操作</h2>
+    <p>滚轮缩放、<b>按住滚轮（中键）拖动 = 自由旋转视角</b>（城市天际线式任意角度，上下俯仰 + 左右环绕）、<b>WASD / 方向键移动视野</b>（W 前进 S 后退 A 左移 D 右移）、Shift+拖动平移、双指缩放/拖动/扭转自由旋转；单指或左键拖动连续铺路和分区。工具栏点「生活类 / 服务类 / 产业类」展开子工具，选中后浮层保持展开，方便连续铺同类建筑；「查看」工具点地块看详情，悬停建筑看服务覆盖与污染。</p>
+
+    <h2>建造辅助</h2>
+    <ul>
+      <li><b>放置预览</b>：鼠标悬停地块就直接给结论——<b>绿</b>=可建、<b>黄</b>=未连通（先铺路接高速）、<b>橙</b>=资金不足但可透支、<b>红</b>=不可建，不用点下去才发现失败。</li>
+      <li><b>因子条</b>：用「查看」点地块，详情里把服务覆盖 / 教育 / 幸福 / 就业 / 污染 / 噪音做成彩色条，哪一项在拖幸福一眼可见；需求条点开也有进度条与 34 / 67 密度刻度。</li>
+      <li><b>叠加层</b>：画布右上四枚独立按钮（关闭 / 连通 / 拥堵 / 环境），点哪枚切哪档；也可按 <b>L</b> 循环。</li>
+    </ul>
+    <div class="state-legend" aria-label="建造状态图例">
+      <span><i class="lg-ok"></i>绿 · 可建</span>
+      <span><i class="lg-warn"></i>黄 · 未连通</span>
+      <span><i class="lg-debt"></i>橙 · 可透支</span>
+      <span><i class="lg-bad"></i>红 · 不可建</span>
+    </div>
+
+    <div class="ctrl">
+      <div class="row"><span>视角</span><b>Isometric 2:1</b></div>
+      <div class="row"><span>地图</span><b>50 × 50 逻辑格</b></div>
+      <div class="row"><span>初始资金</span><b>¥ 15,000</b></div>
+      <div class="row"><span>建筑配色</span><b>住绿 / 商蓝 / 工橙 / 办紫</b></div>
+      <div class="row"><span>结算 / 车辆</span><b>2 秒 / 120ms</b></div>
+    </div>
+
+    <p class="note">提示：悬停「金币 / 人口」看收支构成与人口来源；悬停需求条第一行显示当前需求等级（低/中/高密度、国家机密工业、写字楼大厦）。</p>
+  </aside>
+
+  <div class="phone-land menu-open">
+    <div class="hud">
+      <span class="brand">一局之城</span>
+      <div class="stats">
+        <div class="clock" id="clockBox"><span class="clock-time" id="gameTime">第1天 08:00</span><span class="clock-icon" id="dayIcon">☀</span></div>
+        <div class="stat stat--tap" id="moneyStat"><span class="stat-label">💰</span><b class="stat-value" id="money">¥ 15,000</b><span class="income up" id="income">+0/秒</span></div>
+        <div class="stat stat--tap" id="peopleStat"><span class="stat-label stat-label--cn">人口</span><b class="stat-value" id="people">0</b></div>
+        <div class="stat"><span class="stat-label stat-label--cn">幸福</span><b class="stat-value" id="happy">0</b><small class="stat-rank" id="happyRank"></small></div>
+        <div class="stat"><span class="stat-label stat-label--cn">车辆</span><b class="stat-value" id="cars">0</b><span class="jam" id="jam"></span></div>
+      </div>
+      <div class="rci-group">
+        <div class="rci" id="rciR"><span class="rci-name">住宅需求</span><div class="bar"><div class="bar-fill r" id="barR"></div></div><b id="valR">60</b></div>
+        <div class="rci" id="rciC"><span class="rci-name">商业需求</span><div class="bar"><div class="bar-fill c" id="barC"></div></div><b id="valC">55</b></div>
+        <div class="rci" id="rciI"><span class="rci-name">工业需求</span><div class="bar"><div class="bar-fill i" id="barI"></div></div><b id="valI">50</b></div>
+        <div class="rci" id="rciO"><span class="rci-name">办公需求</span><div class="bar"><div class="bar-fill o" id="barO"></div></div><b id="valO">35</b></div>
+      </div>
+    </div>
+
+    <div class="canvas-wrap">
+      <canvas id="mapCanvas"></canvas>
+      <!-- 可视化叠加层（优化 #3）：每种模式一枚独立按钮，点哪枚切哪档；
+           右侧「返回主界面」单独一枚，点了先弹二次确认（2026-11-24 用户要求） -->
+      <div class="canvas-tools" id="canvasTools">
+        <span class="ct-label">叠加<i class="ct-key">L</i></span>
+        <div class="overlay-btn" data-ov="0">关闭</div>
+        <div class="overlay-btn" data-ov="1">连通</div>
+        <div class="overlay-btn" data-ov="2">拥堵</div>
+        <div class="overlay-btn" data-ov="3">环境</div>
+        <span class="ct-sep"></span>
+        <div class="overlay-btn overlay-btn--home" id="btnHome">返回主界面</div>
+      </div>
+      <div class="overlay-legend" id="overlayLegend"></div>
+    </div>
+    <div class="game-hint">WASD/方向键移动 · 滚轮缩放 · 中键拖动自由旋转视角 · Shift+拖动平移 · 单指/左键拖动铺地块 —— 本游戏为一次性游玩，退出后重新进入需从头再来</div>
+    <div class="toolbar" id="tools"></div>
+    <div class="subtool-bar" id="subtools"></div>
+    <div class="subtool-fade subtool-fade--left" id="subFadeL"></div>
+    <div class="subtool-fade subtool-fade--right" id="subFadeR"></div>
+
+    <!-- 开局面（2026-11-23）：背景是实时渲染的繁华示例城，菜单浮层贴在机框内、不做页面跳转 -->
+    <div class="start-menu" id="startMenu">
+      <div class="start-scrim"></div>
+      <div class="start-inner">
+        <div class="start-title">一局之城</div>
+        <div class="start-sub">一局一把，建一座属于自己的城</div>
+        <div class="start-ver">v1.9 · 2026.11.25</div>
+        <button class="start-btn" id="btnStartFinite">有限资金 · 立即开始</button>
+        <button class="start-btn" id="btnStartInfinite">无限资金 · 立即开始</button>
+        <button class="start-btn" id="btnSettings">设置</button>
+      </div>
+    </div>
+    <!-- 返回主界面二次确认：是否退回至主界面？（确定 / 取消） -->
+    <div class="confirm-mask" id="homeMask"></div>
+    <div class="confirm-box" id="homeBox">
+      <div class="confirm-title">返回主界面</div>
+      <div class="confirm-text">是否退回至主界面？当前城市的建设进度不会保留。</div>
+      <div class="confirm-acts">
+        <button id="homeCancel">取消</button>
+        <button class="confirm-ok" id="homeOk">确定</button>
+      </div>
+    </div>
+    <!-- 设置弹窗（内容待补充：先留空） -->
+    <div class="settings-mask" id="settingsMask"></div>
+    <div class="settings-box" id="settingsBox">
+      <div class="settings-head"><span>设置</span><span class="settings-head-acts"><button type="button" id="settingsReset">恢复默认</button><span id="settingsClose" title="关闭">×</span></span></div>
+      <div class="settings-body" id="settingsBody"></div>
+    </div>
+  </div>
+</div>
+
+<div class="hover-tip" id="hoverTip">
+  <span class="hover-state ok" id="hoverState" style="display:none"><i></i><em id="hoverStateText" style="font-style:normal"></em></span>
+  <span class="hover-title" id="hoverTitle"></span>
+  <span class="hover-line" id="hoverLines"></span>
+</div>
+<div class="mask" id="mask"></div>
+<div class="inspect" id="inspectBox">
+  <h3><span id="insTitle"></span><span id="insClose">×</span></h3>
+  <div class="row"><span>坐标</span><b id="insCoord"></b></div>
+  <div class="row"><span>通路</span><b id="insConn"></b></div>
+  <div class="row"><span>产出</span><b id="insOutput"></b></div>
+  <div class="row"><span>消耗 / 容量</span><b id="insCost"></b></div>
+  <div class="row" id="insServedRow" style="display:none"><span>服务覆盖</span><b id="insServed"></b></div>
+  <div class="row" id="insEnvRow" style="display:none"><span>环境</span><b id="insEnv"></b></div>
+  <!-- 因子条（优化 #2）：服务 / 教育 / 幸福 / 污染 / 噪音 / 就业，一眼看出扣分项 -->
+  <div class="fbars" id="insBars" style="display:none"></div>
+  <div class="state-legend" aria-label="建造状态图例">
+    <span><i class="lg-ok"></i>绿 · 可建</span>
+    <span><i class="lg-warn"></i>黄 · 未连通</span>
+    <span><i class="lg-debt"></i>橙 · 可透支</span>
+    <span><i class="lg-bad"></i>红 · 不可建</span>
+  </div>
+</div>
+<div class="info-hover-panel" id="infoBox">
+  <h3><span id="infoTitle"></span><span id="infoClose">×</span></h3>
+  <div id="infoLines"></div>
+</div>
+<!-- 破产弹窗（2026-11-23 bug 修复 #1） -->
+<div class="bankrupt-box" id="bankruptBox">
+  <h3>城市破产</h3>
+  <p id="bankruptText"></p>
+  <button id="bankruptClose">知道了</button>
+</div>
+<div class="toast" id="toast"></div>
+
+<script src="utils/render3d.js"></script>
+<script>
+(function () {
+  // ============ 玩家偏好设置（页面内联副本，与 utils/settings.js 默认值一致）============
+  // 一切只影响画面/交互/显示上限；sim 公式、价格、结算周期、默认规则一律不动。
+  var SETTINGS_STORAGE_KEY='oneCitySettings_v1';
+  var DEFAULT_SETTINGS={
+    dayNight:true, showActors:true, lowQuality:false,
+    rotateButton:'middle', wasdSpeed:1, wheelMode:'zoom', hoverDebounce:true, showHints:true,
+    daySpeed:1, settleUiSpeed:1, maxCars:100, pedMax:30,
+    uiSound:true, ambientSound:false,
+    buildPreview:true, showFactors:true, thousands:true
+  };
+  var SETTINGS_GROUPS=[
+    {title:'画面',rows:[
+      {key:'dayNight',name:'昼夜效果',type:'switch',hint:'关闭后没有夜晚遮罩，一直白天'},
+      {key:'showActors',name:'车辆行人显示',type:'switch',hint:'关闭只隐藏显示，车流/行人模拟仍在跑'},
+      {key:'lowQuality',name:'粒子 / 细节',type:'segment',options:[{v:true,n:'低画质'},{v:false,n:'默认画质'}]}
+    ]},
+    {title:'控制',rows:[
+      {key:'rotateButton',name:'视角旋转方式',type:'segment',options:[{v:'middle',n:'中键拖动'},{v:'right',n:'右键拖动'}]},
+      {key:'wasdSpeed',name:'WASD 移动速度',type:'range',min:0.5,max:2,step:0.1,unit:'x'},
+      {key:'wheelMode',name:'鼠标滚轮行为',type:'segment',options:[{v:'zoom',n:'缩放'},{v:'rotate',n:'旋转视角'}]},
+      {key:'hoverDebounce',name:'悬停预览防抖',type:'switch',hint:'快速扫过地块时不逐像素重算拾取'},
+      {key:'showHints',name:'快捷键提示',type:'switch',hint:'底部提示栏是否一直显示'}
+    ]},
+    {title:'模拟',rows:[
+      {key:'daySpeed',name:'游戏昼夜速度',type:'segment',options:[{v:0.5,n:'0.5x'},{v:1,n:'1x'},{v:2,n:'2x'}]},
+      {key:'settleUiSpeed',name:'结算速度（仅 UI）',type:'segment',options:[{v:0.5,n:'0.5x'},{v:1,n:'1x'},{v:2,n:'2x'}],hint:'只改画面刷新频率，收益与 2 秒结算不变'},
+      {key:'maxCars',name:'车辆上限',type:'range',min:20,max:100,step:10,unit:'辆'},
+      {key:'pedMax',name:'行人数量',type:'range',min:0,max:30,step:5,unit:'人',hint:'0 = 不显示行人'}
+    ]},
+    {title:'音效',rows:[
+      {key:'uiSound',name:'操作反馈',type:'switch',hint:'预览端为提示音，小程序端为轻震动'},
+      {key:'ambientSound',name:'环境氛围音',type:'switch',hint:'低音量循环音，关闭即静音'}
+    ]},
+    {title:'辅助',rows:[
+      {key:'buildPreview',name:'建造预览',type:'switch',hint:'悬停时显示彩色地块色块'},
+      {key:'showFactors',name:'地块详情因子条',type:'switch'},
+      {key:'thousands',name:'数值千分位',type:'switch'}
+    ]}
+  ];
+  var SETTINGS_RANGE={wasdSpeed:[0.5,2],daySpeed:[0.5,2],settleUiSpeed:[0.5,2],maxCars:[20,100],pedMax:[0,30]};
+  function normalizeSettings(raw){
+    var s={};
+    Object.keys(DEFAULT_SETTINGS).forEach(function(k){
+      var d=DEFAULT_SETTINGS[k], v=raw&&raw[k]!==undefined?raw[k]:d;
+      if(typeof d==='boolean')v=!!v;
+      else if(k==='rotateButton')v=(v==='right'?'right':'middle');
+      else if(k==='wheelMode')v=(v==='rotate'?'rotate':'zoom');
+      else { var n=Number(v); v=isFinite(n)?Math.max(SETTINGS_RANGE[k][0],Math.min(SETTINGS_RANGE[k][1],n)):d; }
+      s[k]=v;
+    });
+    return s;
+  }
+  function loadSettings(){
+    try{
+      var raw=JSON.parse(localStorage.getItem(SETTINGS_STORAGE_KEY));
+      return normalizeSettings(raw&&typeof raw==='object'?raw:null);
+    }catch(e){ return normalizeSettings(null); }
+  }
+  function saveSettings(){ try{localStorage.setItem(SETTINGS_STORAGE_KEY,JSON.stringify(settings));}catch(e){} }
+  var settings=loadSettings();
+
+  // ============ 与 utils/sim.js 一致的业务逻辑（v2：50×50 + 四类幸福 + 服务覆盖） ============
+  var SIZE = 50, INITIAL_MONEY = 15000, REFUND = 0.3, TAX = 0.6;
+  var SAVE_KEY = 'preview_city_iso_v3';
+  // 破产阈值与消耗型服务速率（2026-11-23，与 utils/sim.js 一致）
+  var BANKRUPT_LIMIT = -10000, WASTE_RATE = 0.005, CEMETERY_RATE = 0.002;
+  var PRICE = { road:20, res:300, com:450, ind:600, off:750, park:150, parking:200,
+    utility:600, police:500, fire:500, clinic:700,
+    edu1:400, edu2:800, edu3:1600, waste:450, cemetery:400 };
+  // 密度建造价：四个分区可直接按密度建造（索引 = 密度-1，低/中/高）
+  var DENSITY_PRICE = { res:[300,900,2200], com:[450,1200,2800], ind:[600,1500,3200], off:[750,1800,3800] };
+  var MAINT = { utility:18, police:15, fire:15, clinic:20, edu1:12, edu2:20, edu3:45, waste:15, cemetery:8 };
+  var SERVICE = {
+    utility:{name:'水电局', radius:12, capacity:400}, police:{name:'警察局', radius:10, capacity:300},
+    fire:{name:'消防局', radius:10, capacity:300}, clinic:{name:'诊所', radius:10, capacity:250},
+    edu1:{name:'小学', radius:8, capacity:500}, edu2:{name:'中学', radius:12, capacity:600},
+    edu3:{name:'大学', radius:20, capacity:500}, waste:{name:'垃圾场', radius:12, capacity:300},
+    cemetery:{name:'墓地', radius:16, capacity:400}
+  };
+  var SERVICE_TYPES = ['utility','police','fire','clinic','edu1','edu2','edu3','waste','cemetery'];
+  var POLLUTION = { ind:{radius:7,strength:1.0}, waste:{radius:8,strength:1.3} };
+  var NOISE = { ind:{radius:5,strength:1.0}, waste:{radius:5,strength:1.2} };
+  var PARK_PRICE = 200;
+  var LEVEL = {
+    res: { names:['低密度住宅','中密度住宅','高密度住宅'], capacity: [8,16,26], color: ['#5FCF86','#3FB768','#2E9552'] },
+    com: { names:['低密度商业','中密度商业','高密度商业'], jobs: [6,12,20], capacity: [10,18,28], revenue: [24,60,120], color: ['#7FB6FF','#4A8FEA','#2C6BC4'] },
+    ind: { names:['普通工业','特别工业','国家机密工业'], jobs: [10,20,32], revenue: [40,95,180], color: ['#F5AE63','#E9873C','#C9661F'] },
+    off: { names:['普通办公楼','办公产业园','写字楼大厦'], jobs: [8,16,26], revenue: [30,75,150], color: ['#B9A6E8','#9279D8','#6F55B8'] },
+    park: { color: ['#5FC47A','#5FC47A','#5FC47A'] }
+  };
+  var TYPE_NAME = { empty:'空地', road:'道路', res:'住宅', com:'商业', ind:'工业', off:'办公楼', park:'公园', parking:'停车场',
+    utility:'水电局', police:'警察局', fire:'消防局', clinic:'诊所',
+    edu1:'小学', edu2:'中学', edu3:'大学', waste:'垃圾场', cemetery:'墓地' };
+  var BUILDABLE = ['res','com','ind','off','park','parking'].concat(SERVICE_TYPES);
+  var ZONES = ['res','com','ind','off'];
+  var DEMAND_KEY = { res:'R', com:'C', ind:'I', off:'O' };
+  var BASE_TOOLS = [
+    { key:'inspect', name:'查看', color:'#FFFFFF', price:'' },
+    { key:'road', name:'道路', color:'#8C96A8', price:'20' }
+  ];
+  var CATEGORIES = [
+    { key:'life', name:'生活类', color:'#5FCF86', tools:[
+      { key:'res1', type:'res', level:1, name:'低密度住宅', color:'#5FCF86', price:'300' },
+      { key:'res2', type:'res', level:2, name:'中密度住宅', color:'#3FB768', price:'900' },
+      { key:'res3', type:'res', level:3, name:'高密度住宅', color:'#2E9552', price:'2200' },
+      { key:'park', type:'park', level:1, name:'公园', color:'#5FC47A', price:'150' },
+      { key:'parking', type:'parking', level:1, name:'停车场', color:'#4B586B', price:'200' } ] },
+    { key:'service', name:'服务类', color:'#4EC9D8', tools:[
+      { key:'utility', type:'utility', level:1, name:'水电局', color:'#4EC9D8', price:'600' },
+      { key:'police', type:'police', level:1, name:'警察局', color:'#5A78C8', price:'500' },
+      { key:'fire', type:'fire', level:1, name:'消防局', color:'#E86A5A', price:'500' },
+      { key:'clinic', type:'clinic', level:1, name:'诊所', color:'#7FE0C8', price:'700' },
+      { key:'edu1', type:'edu1', level:1, name:'小学', color:'#E8C97F', price:'400' },
+      { key:'edu2', type:'edu2', level:1, name:'中学', color:'#D8A85F', price:'800' },
+      { key:'edu3', type:'edu3', level:1, name:'大学', color:'#C88A3F', price:'1600' },
+      { key:'waste', type:'waste', level:1, name:'垃圾场', color:'#8A9A6A', price:'450' },
+      { key:'cemetery', type:'cemetery', level:1, name:'墓地', color:'#9FB0A0', price:'400' } ] },
+    { key:'industry', name:'产业类', color:'#7FB6FF', tools:[
+      { key:'com1', type:'com', level:1, name:'低密度商业', color:'#8FC7E8', price:'450' },
+      { key:'com2', type:'com', level:2, name:'中密度商业', color:'#5FABD8', price:'1200' },
+      { key:'com3', type:'com', level:3, name:'高密度商业', color:'#2F8FBF', price:'2800' },
+      { key:'ind1', type:'ind', level:1, name:'普通工业', color:'#F5AE63', price:'600' },
+      { key:'ind2', type:'ind', level:2, name:'特别工业', color:'#E9873C', price:'1500' },
+      { key:'ind3', type:'ind', level:3, name:'国家机密工业', color:'#C9661F', price:'3200' },
+      { key:'off1', type:'off', level:1, name:'普通办公楼', color:'#B9A6E8', price:'750' },
+      { key:'off2', type:'off', level:2, name:'办公产业园', color:'#9279D8', price:'1800' },
+      { key:'off3', type:'off', level:3, name:'写字楼大厦', color:'#6F55B8', price:'3800' } ] }
+  ];
+  var BULLDOZE_TOOL = { key:'bulldoze', name:'拆除', color:'#E06C6C', price:'30%' };
+  var TOOLS = BASE_TOOLS.concat(CATEGORIES, [BULLDOZE_TOOL]);
+
+  function clamp(v, lo, hi) { if (!isFinite(v)) return lo; return Math.min(hi, Math.max(lo, v)); }
+  function idx(x, y) { return y * SIZE + x; }
+  function inBounds(x, y) { return x>=0 && y>=0 && x<SIZE && y<SIZE; }
+  // 建造价：分区按密度取价，其余工具用基础价
+  function priceOf(tool, level) {
+    if (ZONES.indexOf(tool)>=0) return DENSITY_PRICE[tool][clamp(Math.round(level||1),1,3)-1];
+    return PRICE[tool];
+  }
+  // 密度名称（level 1~3）；非分区返回原名
+  function densityName(type, level) {
+    if (ZONES.indexOf(type)>=0) return LEVEL[type].names[clamp(Math.round(level||1),1,3)-1];
+    return TYPE_NAME[type]||type;
+  }
+  // 需求条分级名：需求 <34 低密度、34~66 中密度、>=67 高密度。
+  // 审计 #25：恢复导出并在 RCI 悬停面板第一行展示（推翻 #19 的删除方案）。
+  function demandLabel(key, value) {
+    var tier = value<34?0:value<67?1:2;
+    var zone = {R:'res',C:'com',I:'ind',O:'off'}[key];
+    return LEVEL[zone].names[tier];
+  }
+  // 幸福简易文字评级（2026-11-25）：0-20 很差 / 20-40 偏低 / 40-60 一般 / 60-80 良好 / 80+ 优秀
+  function happinessRank(v){
+    if(v<20)return{text:'很差',cls:'rank-bad'};
+    if(v<40)return{text:'偏低',cls:'rank-bad'};
+    if(v<60)return{text:'一般',cls:'rank-mid'};
+    if(v<80)return{text:'良好',cls:'rank-good'};
+    return{text:'优秀',cls:'rank-good'};
+  }
+  function makeCell(type) { return { type:type||'empty', level:1, people:0, progress:0, age:0, used:0, connected:false }; }
+  function createCity() {
+    return { money:INITIAL_MONEY, happiness:0, happy:{res:0,com:0,ind:0,off:0},
+      demand:{R:45,C:55,I:50,O:35}, population:0, popBorn:0, popMigrant:0, employed:0,
+      cycle:0, lastIncome:0, lastMaint:0,
+      incomeBreakdown:{res:0,com:0,ind:0,off:0,maint:0}, incomeNotes:[], demandNotes:{R:[],C:[],I:[],O:[]},
+      pollution:new Array(SIZE*SIZE).fill(0), noise:new Array(SIZE*SIZE).fill(0), coverage:{},
+      cells:Array.from({length:SIZE*SIZE}, function(){ return makeCell('empty'); }) };
+  }
+  // BFS：以接入高速的道路为源（四边高速：y=0 / y=SIZE-1 / x=0 / x=SIZE-1，紧邻任一高速边的道路即接入）；
+  // 未接高速的路网整片不连通（与 sim.HIGHWAY_Y / isInnerEdge 一致）
+  function updateConnectivity(city) {
+    var cells=city.cells, i;
+    for (i=0;i<cells.length;i++) cells[i].connected=false;
+    var q=[];
+    for (i=0;i<cells.length;i++) {
+      var gx=i%SIZE, gy=Math.floor(i/SIZE);
+      if (cells[i].type==='road' && (gy===HIGHWAY_Y+1||gy===SIZE-2||gx===HIGHWAY_Y+1||gx===SIZE-2)) { cells[i].connected=true; q.push(i); }
+    }
+    var head=0;
+    while (head<q.length) {
+      var cur=q[head++], cx=cur%SIZE, cy=Math.floor(cur/SIZE);
+      var ns=[[cx,cy-1],[cx,cy+1],[cx-1,cy],[cx+1,cy]];
+      for (var n=0;n<4;n++) {
+        var nx=ns[n][0], ny=ns[n][1];
+        if (!inBounds(nx,ny)) continue;
+        var ni=idx(nx,ny), c=cells[ni];
+        if (c.connected) continue;
+        if (c.type==='road') { c.connected=true; q.push(ni); }
+        else if (BUILDABLE.indexOf(c.type)>=0) { c.connected=true; }
+      }
+    }
+  }
+  function canPlace(city,x,y,tool,level) {
+    if (!inBounds(x,y)) return {ok:false, reason:'地图边界外不能操作'};
+    if (tool==='inspect') return {ok:true};
+    var c=city.cells[idx(x,y)];
+    if (tool==='bulldoze') return c.type==='empty'?{ok:false,reason:'这里没有东西可拆'}:{ok:true};
+    if (tool==='road'||BUILDABLE.indexOf(tool)>=0) {
+      if (c.type!=='empty') return {ok:false,reason:'只能建在空地上'};
+      // 透支建造（2026-11-22，与 utils/sim.js 一致）：金币不够也允许放置，余额可为负；
+      // 但跌破破产阈值（2026-11-23 bug 修复 #1，与 sim.BANKRUPT_LIMIT 一致）即锁建造只留拆除还债
+      if (city.money<BANKRUPT_LIMIT) return {ok:false,reason:'已破产：只能拆除还债或重置城市'};
+      return {ok:true};
+    }
+    return {ok:false,reason:'未知工具'};
+  }
+  function place(city,x,y,tool,level) {
+    var check=canPlace(city,x,y,tool,level);
+    if (!check.ok) return {ok:false,reason:check.reason,changed:false};
+    if (tool==='inspect') return {ok:true,changed:false};
+    var i=idx(x,y), c=city.cells[i];
+    if (tool==='bulldoze') {
+      var old=c.type;
+      if (BUILDABLE.indexOf(old)>=0 && old!=='park') city.money+=Math.round(priceOf(old,c.level)*REFUND);
+      city.cells[i]=makeCell('empty'); return {ok:true,changed:true};
+    }
+    city.money-=priceOf(tool,level); city.cells[i]=makeCell(tool);
+    if (ZONES.indexOf(tool)>=0) city.cells[i].level=clamp(Math.round(level||1),1,3);
+    return {ok:true,changed:true};
+  }
+  // 服务覆盖位图：连通的服务源在欧氏半径内标记目标类型，
+  // 且目标必须与服务源经路网连通（源邻接道路沿道路 BFS 可达、目标邻接可达道路）
+  function buildCoverage(city, type, targetTypes) {
+    var n=SIZE*SIZE, map=new Array(n).fill(0), srcs=[], cells=city.cells, i;
+    for (i=0;i<n;i++) if (cells[i].type===type&&cells[i].connected) srcs.push(i);
+    if (!srcs.length) return {map:map, srcs:srcs};
+    var radius=SERVICE[type].radius, target={};
+    targetTypes.forEach(function(t){target[t]=true;});
+    // 路网可达集合：从每个服务源的邻接道路出发，只沿道路格多源 BFS
+    var reach=new Array(n).fill(0), q=[];
+    srcs.forEach(function(si){
+      var sx=si%SIZE, sy=Math.floor(si/SIZE);
+      [[sx,sy-1],[sx,sy+1],[sx-1,sy],[sx+1,sy]].forEach(function(p){
+        if (!inBounds(p[0],p[1])) return;
+        var ri=idx(p[0],p[1]);
+        if (cells[ri].type==='road'&&!reach[ri]) { reach[ri]=1; q.push(ri); }
+      });
+    });
+    var head=0;
+    while (head<q.length) {
+      var cur=q[head++], cx=cur%SIZE, cy=Math.floor(cur/SIZE);
+      [[cx,cy-1],[cx,cy+1],[cx-1,cy],[cx+1,cy]].forEach(function(p){
+        if (!inBounds(p[0],p[1])) return;
+        var ri=idx(p[0],p[1]);
+        if (cells[ri].type==='road'&&!reach[ri]) { reach[ri]=1; q.push(ri); }
+      });
+    }
+    function roadLinked(x,y){
+      return [[x,y-1],[x,y+1],[x-1,y],[x+1,y]].some(function(p){
+        return inBounds(p[0],p[1]) && cells[idx(p[0],p[1])].type==='road' && reach[idx(p[0],p[1])];
+      });
+    }
+    // 分摊限流（2026-11-23 bug 修复 #3，与 sim.buildCoverage 一致）：
+    // 每个候选格收集半径内的源列表，按「最近源距离」升序就近分配、单源容量封顶
+    var cand=new Array(n).fill(null);
+    srcs.forEach(function(si,sIdx){
+      var sx=si%SIZE, sy=Math.floor(si/SIZE);
+      var x0=Math.max(0,sx-radius), x1=Math.min(SIZE-1,sx+radius);
+      var y0=Math.max(0,sy-radius), y1=Math.min(SIZE-1,sy+radius);
+      for (var y=y0;y<=y1;y++) for (var x=x0;x<=x1;x++) {
+        var dx=x-sx, dy=y-sy;
+        if (dx*dx+dy*dy>radius*radius) continue;
+        var i2=idx(x,y);
+        if (!target[cells[i2].type]) continue;
+        if (!roadLinked(x,y)) continue;
+        if (!cand[i2]) cand[i2]={i:i2,near:[]};
+        cand[i2].near.push({s:sIdx,d2:dx*dx+dy*dy});
+      }
+    });
+    var freeCap=srcs.map(function(si){
+      var base=SERVICE[type].capacity;
+      return (type==='waste'||type==='cemetery')
+        ? Math.max(0, base-Math.max(0,cells[si].used||0))
+        : base;
+    });
+    var list=cand.filter(Boolean);
+    list.forEach(function(entry){
+      entry.near.sort(function(a,b){return a.d2-b.d2;});
+      entry.d2=entry.near[0].d2;
+    });
+    list.sort(function(a,b){return a.d2-b.d2||a.i-b.i;});
+    list.forEach(function(entry){
+      var pop=cells[entry.i].people||0;
+      if (pop<=0){ map[entry.i]=1; return; }
+      for (var k=0;k<entry.near.length;k++){
+        var s=entry.near[k].s;
+        if (freeCap[s]>=pop){ freeCap[s]-=pop; map[entry.i]=1; return; }
+      }
+      map[entry.i]=0;   // 就近全部满员：这一格吃不到服务
+    });
+    return {map:map, srcs:srcs};
+  }
+  // 污染场 / 噪音场：工业、垃圾场为源，按距离线性衰减叠加
+  function buildFields(city){
+    var n=SIZE*SIZE, pol=city.pollution, noi=city.noise;
+    pol.fill(0); noi.fill(0);
+    var cells=city.cells;
+    function scatter(field, spec, typeName){
+      for (var i=0;i<n;i++){
+        if (cells[i].type!==typeName||!cells[i].connected) continue;
+        var sx=i%SIZE, sy=Math.floor(i/SIZE), r=spec.radius;
+        var x0=Math.max(0,sx-r), x1=Math.min(SIZE-1,sx+r);
+        var y0=Math.max(0,sy-r), y1=Math.min(SIZE-1,sy+r);
+        for (var y=y0;y<=y1;y++) for (var x=x0;x<=x1;x++){
+          var dx=x-sx, dy=y-sy, d=Math.sqrt(dx*dx+dy*dy);
+          if (d>r) continue;
+          field[idx(x,y)]+=spec.strength*(1-d/r);
+        }
+      }
+    }
+    Object.keys(POLLUTION).forEach(function(t){scatter(pol,POLLUTION[t],t);});
+    Object.keys(NOISE).forEach(function(t){scatter(noi,NOISE[t],t);});
+    // 污染/噪音单格封顶 1（多源叠加不无限累积）
+    var fi;
+    for (fi=0;fi<n;fi++){ if (pol[fi]>1) pol[fi]=1; if (noi[fi]>1) noi[fi]=1; }
+  }
+  // 结算：连通 → 覆盖/污染场 → 统计 → 就业 → 四类幸福 → RCI+O → 人口 → 收支（密度固定，不升降级）
+  function settle(city, ext) {
+    updateConnectivity(city);
+    var cells=city.cells, n=SIZE*SIZE, i;
+    var covWater=buildCoverage(city,'utility',['res','com','ind','off']);
+    var covPolice=buildCoverage(city,'police',['res','com','ind','off']);
+    var covFire=buildCoverage(city,'fire',['res','com','ind','off']);
+    var covClinic=buildCoverage(city,'clinic',['res']);
+    var covEdu1=buildCoverage(city,'edu1',['res']);
+    var covEdu2=buildCoverage(city,'edu2',['res']);
+    var covEdu3=buildCoverage(city,'edu3',['res']);
+    var covWaste=buildCoverage(city,'waste',['res']);
+    var covCemetery=buildCoverage(city,'cemetery',['res']);
+    city.coverage={utility:covWater.map, police:covPolice.map, fire:covFire.map,
+      clinic:covClinic.map, edu1:covEdu1.map, edu2:covEdu2.map, edu3:covEdu3.map,
+      waste:covWaste.map, cemetery:covCemetery.map};
+    buildFields(city);
+    var pol=city.pollution, noi=city.noise;
+
+    var housingCap=0, comCap=0, comJobs=0, indJobs=0, offJobs=0, maintTotal=0, roadCount=0;
+    var resList=[];
+    for (i=0;i<n;i++){
+      var c=cells[i], L=c.level-1;
+      if (c.type==='res'){ if (c.connected){ housingCap+=LEVEL.res.capacity[L]; resList.push(i); } }
+      else if (c.type==='com'){ if (c.connected){ comCap+=LEVEL.com.capacity[L]; comJobs+=LEVEL.com.jobs[L]; } }
+      else if (c.type==='ind'){ if (c.connected) indJobs+=LEVEL.ind.jobs[L]; }
+      else if (c.type==='off'){ if (c.connected) offJobs+=LEVEL.off.jobs[L]; }
+      else if (c.type==='road') roadCount++;   // 道路也计入市政维护（2026-11-21 后期挑战）
+      else if (MAINT[c.type]) maintTotal+=MAINT[c.type];
+    }
+    // 道路维护：每格 ¥1 / 周期——路网铺得越大，市政开销越高
+    maintTotal+=roadCount;
+
+    var resPop=0, waterPop=0, policePop=0, firePop=0, clinicPop=0;
+    var edu1Pop=0, edu2Pop=0, edu3Pop=0, wastePop=0, cemeteryPop=0;
+    var parkScore=0, landScore=0, polRes=0, noiRes=0;
+    resList.forEach(function(si){
+      var p=cells[si].people;
+      resPop+=p;
+      if (covWater.map[si]) waterPop+=p;
+      if (covPolice.map[si]) policePop+=p;
+      if (covFire.map[si]) firePop+=p;
+      if (covClinic.map[si]) clinicPop+=p;
+      if (covEdu1.map[si]) edu1Pop+=p;
+      if (covEdu2.map[si]) edu2Pop+=p;
+      if (covEdu3.map[si]) edu3Pop+=p;
+      if (covWaste.map[si]) wastePop+=p;
+      if (covCemetery.map[si]) cemeteryPop+=p;
+      polRes+=pol[si]; noiRes+=noi[si];
+      var rx=si%SIZE, ry=Math.floor(si/SIZE), parks=0;
+      var px0=Math.max(0,rx-5), px1=Math.min(SIZE-1,rx+5);
+      var py0=Math.max(0,ry-5), py1=Math.min(SIZE-1,ry+5);
+      for (var y=py0;y<=py1;y++) for (var x=px0;x<=px1;x++){
+        var dx=x-rx, dy=y-ry;
+        if (dx*dx+dy*dy>25) continue;
+        if (cells[idx(x,y)].type==='park') parks++;
+      }
+      parkScore+=Math.min(3,parks)*3*p;
+      var developed=0, total=0;
+      var lx0=Math.max(0,rx-2), lx1=Math.min(SIZE-1,rx+2);
+      var ly0=Math.max(0,ry-2), ly1=Math.min(SIZE-1,ry+2);
+      for (var y2=ly0;y2<=ly1;y2++) for (var x2=lx0;x2<=lx1;x2++){
+        if (x2===rx&&y2===ry) continue;
+        total++;
+        var t=cells[idx(x2,y2)].type;
+        if (t!=='empty'&&t!=='road') developed++;
+      }
+      landScore+=(total>0?developed/total:0)*8*p;
+    });
+    // 无人口时覆盖率取 0（没人被服务就没有服务红利，不能白送中性 0.5）
+    // 服务覆盖率按「供给容量」封顶（一座建筑能服务的人口/学位有限）
+    function capacityOf(ct){ var t=0; for (i=0;i<n;i++) if (cells[i].type===ct&&cells[i].connected) t+=SERVICE[ct].capacity; return t; }
+    var capWater=capacityOf('utility'), capPolice=capacityOf('police'), capFire=capacityOf('fire');
+    var capClinic=capacityOf('clinic'), capEdu1=capacityOf('edu1'), capEdu2=capacityOf('edu2');
+    var capEdu3=capacityOf('edu3'), capCemetery=capacityOf('cemetery');
+    function safe(a,b){ return b>0?a/b:0; }
+    function served(a,cap,b){ return b>0?Math.min(a,cap)/b:0; }
+    var waterRatio=served(waterPop,capWater,resPop), policeRatio=served(policePop,capPolice,resPop);
+    var fireRatio=served(firePop,capFire,resPop), clinicRatio=served(clinicPop,capClinic,resPop);
+    var edu1Ratio=served(edu1Pop,capEdu1,resPop), edu2Ratio=served(edu2Pop,capEdu2,resPop), edu3Ratio=served(edu3Pop,capEdu3,resPop);
+    var wasteRatio=safe(wastePop,resPop), cemeteryRatio=served(cemeteryPop,capCemetery,resPop);
+    var parkAvg=safe(parkScore,resPop), landAvg=safe(landScore,resPop);
+    var polResAvg=resList.length?polRes/resList.length:0;
+    var noiResAvg=resList.length?noiRes/resList.length:0;
+
+    var comCount=0, polCom=0, noiCom=0, offCount=0, polOff=0, noiOff=0, offClean=0;
+    for (i=0;i<n;i++){
+      var cc=cells[i];
+      if (cc.type==='com'&&cc.connected){ comCount++; polCom+=pol[i]; noiCom+=noi[i]; }
+      else if (cc.type==='off'&&cc.connected){
+        offCount++; polOff+=pol[i]; noiOff+=noi[i];
+        // 低污染安静地块才算洁净办公区（0.15 阈值）
+        if (pol[i]<0.15&&noi[i]<0.15) offClean++;
+      }
+    }
+    var polComAvg=comCount?polCom/comCount:0, noiComAvg=comCount?noiCom/comCount:0;
+    var polOffAvg=offCount?polOff/offCount:0, noiOffAvg=offCount?noiOff/offCount:0;
+    var cleanRatio=offCount?offClean/offCount:0;
+
+    // 就业分配：岗位不够时按岗位数等比例摊人（不再先满足办公/商业把工业饿死）
+    var pop=city.population;
+    // 消耗型服务（2026-11-23 bug 修复 #3，与 sim.settle 一致）：
+    // 垃圾/殡葬容量按人口缓慢消耗，在连通源之间均摊，用完覆盖失效必须新建
+    function consumeService(type,cov,amount){
+      var cs=cov&&cov.srcs;
+      if(!cs||!cs.length||!(amount>0))return;
+      var share=amount/cs.length;
+      cs.forEach(function(si){
+        var cell=cells[si], cur=Math.max(0,Number(cell.used)||0);
+        cell.used=cur+Math.min(Math.max(0,SERVICE[type].capacity-cur),share);
+      });
+    }
+    consumeService('waste',covWaste,pop*WASTE_RATE);
+    consumeService('cemetery',covCemetery,pop*CEMETERY_RATE);
+    var highPop=pop*edu3Ratio;
+    var jobsAll=offJobs+comJobs+indJobs;
+    var offFilled=0, comFilled=0, indFilled=0;
+    if (jobsAll>0) { var fill=Math.min(1,pop/jobsAll); offFilled=offJobs*fill; comFilled=comJobs*fill; indFilled=indJobs*fill; }
+    var employed=offFilled+comFilled+indFilled;
+    var unempRate=pop>0?Math.max(0,1-employed/pop):0;
+    var highIdle=Math.max(0,highPop-offFilled);
+    var lowIdle=Math.max(0,pop-employed);
+    var workerFill=indJobs>0?indFilled/indJobs:0.5;
+    var staffFill=comJobs>0?comFilled/comJobs:0.5;
+    var talentFill=offJobs>0?offFilled/offJobs:0.5;
+    var customer=comCap>0?Math.min(1,pop/comCap):0.5;
+    var safety=(policeRatio+fireRatio)/2;
+    var health=clinicRatio*0.7+cemeteryRatio*0.3;
+    var edu=(edu1Ratio+edu2Ratio+edu3Ratio)/3;
+    var jamRatio=ext&&ext.jamRatio>0?Math.min(0.5,ext.jamRatio):0;
+    var homelessRate=pop>0?Math.max(0,pop-housingCap)/pop:0;
+    // 拥挤压力（2026-11-21 后期挑战）：人口超过 400 后城市开始拥挤，压住宅幸福（最多 -15）；
+    // 公园能缓解（每点 parkAvg 缓解 8%），后期必须留绿地。
+    var crowd=clamp((pop-400)/800,0,1);
+    var crowdNet=Math.max(0,crowd-Math.min(crowd,parkAvg*0.08));
+
+    // 四类幸福（0-100，难度重做）：基线压到个位数，幸福几乎全部来自服务/就业/环境
+    var resHappy=clamp(8
+      +waterRatio*20+safety*16+health*14+edu*22
+      +parkAvg*1.2+landAvg*0.8
+      -polResAvg*35-noiResAvg*12-unempRate*45-homelessRate*15-crowdNet*15,0,100);
+    var comHappy=clamp(8+customer*30+staffFill*20+safety*14
+      -polComAvg*18-noiComAvg*12-jamRatio*18,0,100);
+    var indHappy=clamp(10+workerFill*26+waterRatio*16+safety*12-jamRatio*22,0,100);
+    var offHappy=clamp(8+talentFill*30+waterRatio*12+safety*14+cleanRatio*14
+      -polOffAvg*20-noiOffAvg*10,0,100);
+
+    // 城市总幸福 = 四类按规模加权平均（住宅按容量、其余按岗位数）；没有人/建筑时取 0
+    var wRes=housingCap, wCom=comJobs, wInd=indJobs, wOff=offJobs;
+    var wSum=wRes+wCom+wInd+wOff;
+    var happyTarget=(pop>0&&wSum>0)?(resHappy*wRes+comHappy*wCom+indHappy*wInd+offHappy*wOff)/wSum:0;
+    city.happy={res:resHappy,com:comHappy,ind:indHappy,off:offHappy};
+    city.happiness=clamp(city.happiness*0.7+happyTarget*0.3,0,100);
+    if (!isFinite(city.happiness)) city.happiness=0;   // NaN 兜底（2026-11-23 bug 修复 #10）
+    var happyFactor=0.5+resHappy/200;
+
+    // RCI + O 需求（低通平滑：新值只占 30%，与幸福平滑同参数，人口波动不跳变）
+    var d=city.demand;
+    var rawR=clamp(42+(jobsAll-pop)*0.22+(resHappy-50)*0.25-(pop/Math.max(housingCap,1))*10-polResAvg*12,0,100);
+    var rawC=clamp(38+pop*0.2-comCap*0.5+(comHappy-50)*0.25,0,100);
+    var rawI=clamp(40+lowIdle*0.3-indJobs*0.1+(indHappy-50)*0.2,0,100);
+    var rawO=clamp(35+highIdle*0.35-offJobs*0.12+(offHappy-50)*0.25,0,100);
+    d.R=clamp(d.R*0.7+rawR*0.3,0,100);
+    d.C=clamp(d.C*0.7+rawC*0.3,0,100);
+    d.I=clamp(d.I*0.7+rawI*0.3,0,100);
+    d.O=clamp(d.O*0.7+rawO*0.3,0,100);
+
+    var taxRes=0, comInc=0, indInc=0, offInc=0, newPop=0;
+    for (i=0;i<n;i++){
+      var cell=cells[i], Lv=cell.level-1;
+      if (cell.type==='res'){
+        var cap=LEVEL.res.capacity[Lv];
+        // clamp 自带 NaN 保护（2026-11-23 bug 修复 #10）：极端场景人口不变 NaN
+        if (!cell.connected) cell.people=clamp(cell.people-cap*0.2,0,cap);
+        else {
+          var target=cap*(d.R/100)*happyFactor, step=cap*0.15;
+          var p2=cell.people+clamp(target-cell.people,-step,step);
+          if (resHappy<40) p2-=cap*0.06;
+          if (unempRate>0.3) p2-=cap*0.04;
+          cell.people=clamp(p2,0,cap);
+        }
+        newPop+=cell.people;
+      } else if (cell.type==='com'&&cell.connected){
+        comInc+=LEVEL.com.revenue[Lv]*customer*(0.5+comHappy/100)*(0.4+0.6*d.C/100);
+      } else if (cell.type==='ind'&&cell.connected){
+        indInc+=LEVEL.ind.revenue[Lv]*(0.5+0.5*d.I/100)*(0.5+indHappy/100);
+      } else if (cell.type==='off'&&cell.connected){
+        offInc+=LEVEL.off.revenue[Lv]*(0.5+0.5*d.O/100)*(0.5+offHappy/100);
+      }
+    }
+    city.population=Math.round(newPop);
+    city.employed=Math.round(employed);
+    taxRes=city.population*TAX*(0.5+resHappy/100);
+    // 人口构成：增长按住宅幸福拆分「本地出生 / 外来迁入」；流失优先迁走外来人口，迁光再扣出生
+    var popDelta=city.population-pop;
+    if (popDelta>0) { var born=Math.round(popDelta*(resHappy/100)*0.35); city.popBorn+=born; city.popMigrant+=popDelta-born; }
+    else if (popDelta<0) {
+      var loss=-popDelta;
+      var fromMigrant=Math.min(city.popMigrant, loss);
+      city.popMigrant-=fromMigrant;
+      city.popBorn=Math.max(0, city.popBorn-(loss-fromMigrant));
+    }
+    // 规模不经济（2026-11-21 后期挑战）：人口 500 起维护费放大，最多 ×3
+    var maintScale=1+Math.min(2,pop/500);
+    maintTotal=Math.round(maintTotal*maintScale);
+    city.lastMaint=maintTotal;
+    var lastIncome=Math.round(taxRes+comInc+indInc+offInc-maintTotal);
+    city.incomeBreakdown={res:Math.round(taxRes),com:Math.round(comInc),ind:Math.round(indInc),off:Math.round(offInc),maint:-maintTotal};
+    // 收入因素说明（金币悬停面板，最多 4 条）
+    var gross=taxRes+comInc+indInc+offInc, notes=[];
+    if (resList.length>0&&parkAvg<1.5) notes.push('公园覆盖不足，住宅幸福偏低，税收打折');
+    if (offJobs>0&&edu3Ratio<0.3) notes.push('大学覆盖不足，高学历人口少，办公楼营收受限');
+    if (unempRate>0.2) notes.push('失业率 '+Math.round(unempRate*100)+'%，消费与税基萎缩');
+    if (polResAvg>0.3||polComAvg>0.3) notes.push('工业/垃圾场污染压低住宅与商业幸福');
+    if (homelessRate>0.05) notes.push('住房不足，人口无法迁入');
+    if (jamRatio>0.15) notes.push('交通拥堵 '+Math.round(jamRatio*100)+'%，拖累商业与工业');
+    if (maintScale>1.3) notes.push('城市规模维护放大 ×'+maintScale.toFixed(1)+'，人口越多市政开销越大');
+    if (crowdNet>0.05) notes.push('城市拥挤，住宅幸福被压低——多建公园缓解');
+    if (comJobs>0&&staffFill<0.6) notes.push('商业缺员工（中学覆盖不足），营收打折');
+    if (maintTotal>=gross&&maintTotal>0) notes.push('服务维护费 ¥'+maintTotal+' 超过营收，入不敷出');
+    // 去重 + 兜底（2026-11-23 bug 修复 #10）：不出现重复提示或空备注
+    var seenNote={};
+    city.incomeNotes=notes.filter(function(x){return !seenNote[x]&&(seenNote[x]=true);}).slice(0,4);
+    if (!city.incomeNotes.length) city.incomeNotes.push('各项收支运转正常，无额外因素拖累收入');
+    // 需求因素说明：每类需求「缺什么」（悬停需求条显示，最多 3 条）
+    var dn={R:[],C:[],I:[],O:[]};
+    if (resList.length===0){ dn.R.push('还没有连通的住宅'); }
+    else {
+      if (parkAvg<1.5) dn.R.push('缺公园：休闲覆盖不足，住宅幸福偏低');
+      if (polResAvg>0.3) dn.R.push('缺好环境：工业/垃圾场污染压低幸福');
+      if (unempRate>0.2) dn.R.push('缺岗位：失业率 '+Math.round(unempRate*100)+'%，居民留不住');
+      if (homelessRate>0.05) dn.R.push('缺住房容量：人口多于住房，迁入受限');
+      if (crowdNet>0.05) dn.R.push('城市拥挤：人口超过 400，多建公园缓解拥挤');
+      if (!dn.R.length) dn.R.push('住宅运转正常，无明显短板');
+    }
+    if (comJobs===0){ dn.C.push('还没有连通的商业'); }
+    else {
+      if (customer<0.7) dn.C.push('缺客流：住宅人口不够多，商场吃不饱');
+      if (staffFill<0.6) dn.C.push('缺员工：中学覆盖不足，招不满人');
+      if (polComAvg>0.3) dn.C.push('缺好环境：污染压低商业幸福');
+      if (!dn.C.length) dn.C.push('商业运转正常，无明显短板');
+    }
+    if (indJobs===0){ dn.I.push('还没有连通的工业'); }
+    else if (indFilled<indJobs*0.6){ dn.I.push('缺工人：低学历人口不足，工厂招不满人'); }
+    else if (jamRatio>0.15){ dn.I.push('缺畅通物流：交通拥堵 '+Math.round(jamRatio*100)+'%'); }
+    else { dn.I.push('工业运转正常，无明显短板'); }
+    if (offJobs===0){ dn.O.push('还没有连通的办公楼'); }
+    else if (edu3Ratio<0.3){ dn.O.push('缺人才：大学覆盖不足，高学历人口不够'); }
+    else if (offHappy<50){ dn.O.push('缺好环境：污染/噪音压低办公幸福'); }
+    else { dn.O.push('办公运转正常，无明显短板'); }
+    // 每类去重 + 截断（2026-11-23 bug 修复 #10）
+    Object.keys(dn).forEach(function(k){
+      var seenD={};
+      dn[k]=dn[k].filter(function(x){return !seenD[x]&&(seenD[x]=true);}).slice(0,3);
+    });
+    city.demandNotes=dn;
+    city.money+=lastIncome;
+    city.lastIncome=lastIncome;
+
+    // 密度固定（2026-11-20 用户明确要求）：低/中/高密度建造时定死，永不升级/降级；
+    // 城市兴衰体现在人口/营收/幸福上，不再改动地块密度。
+    city.cycle++;
+  }
+  function inspect(city,x,y) {
+    if (!inBounds(x,y)) return null;
+    var c=city.cells[idx(x,y)], i=idx(x,y);
+    var info={ name:TYPE_NAME[c.type]||densityName(c.type,c.level), levelText:densityName(c.type,c.level), connected:c.connected, output:'无', cost:'无' };
+    var cov=city.coverage||{};
+    var servedNames={utility:'水电',police:'警务',fire:'消防',clinic:'医疗',edu1:'小学',edu2:'中学',edu3:'大学',waste:'垃圾',cemetery:'殡葬'};
+    if (c.type==='res') {
+      info.output='税收 ¥'+(c.people*TAX).toFixed(1)+' / 周期';
+      info.cost='容纳人口 '+LEVEL.res.capacity[c.level-1]+' · 住宅幸福 '+Math.round(city.happy.res);
+    } else if (c.type==='com') {
+      info.output='营收 ¥'+LEVEL.com.revenue[c.level-1]+' / 周期';
+      info.cost='岗位 '+LEVEL.com.jobs[c.level-1]+' · 商业幸福 '+Math.round(city.happy.com);
+    } else if (c.type==='ind') {
+      info.output='营收 ¥'+LEVEL.ind.revenue[c.level-1]+' / 周期 · 产生污染噪音';
+      info.cost='岗位 '+LEVEL.ind.jobs[c.level-1]+' · 工业幸福 '+Math.round(city.happy.ind);
+    } else if (c.type==='off') {
+      info.output='营收 ¥'+LEVEL.off.revenue[c.level-1]+' / 周期 · 需要高学历员工';
+      info.cost='岗位 '+LEVEL.off.jobs[c.level-1]+' · 办公幸福 '+Math.round(city.happy.off);
+    } else if (c.type==='park') {
+      info.levelText='固定效果'; info.output='附近居民幸福 +（5 格内每公园 +3）'; info.cost='无维护费';
+    } else if (SERVICE[c.type]) {
+      info.levelText='服务建筑';
+      info.output='覆盖半径 '+SERVICE[c.type].radius+' 格 · 供给容量 '+SERVICE[c.type].capacity;
+      if (c.type==='waste'||c.type==='cemetery') info.output+=' · 已消耗 '+Math.round(c.used||0);
+      info.cost='维护费 ¥'+MAINT[c.type]+' / 周期'+(c.connected?'':' · 未连通，不提供供给');
+    } else { info.levelText='—'; info.output='空地，可建造'; }
+    if (BUILDABLE.indexOf(c.type)>=0&&!c.connected) info.output='未连通道路，不产出 / 不吸纳人口 / 不提供供给';
+    else if (c.connected&&(c.type==='res'||c.type==='com'||c.type==='ind'||c.type==='off')) {
+      var got=[];
+      SERVICE_TYPES.forEach(function(t){ if (cov[t]&&cov[t][i]) got.push(servedNames[t]); });
+      info.served=got.length?got.join('/'):'无服务覆盖';
+      var p=Math.round((city.pollution[i]||0)*10)/10, q=Math.round((city.noise[i]||0)*10)/10;
+      if (p>0||q>0) info.pollutionText='污染 '+p+' · 噪音 '+q;
+    }
+    return info;
+  }
+  function serialize(city) {
+    return { v:2, money:city.money, happiness:city.happiness,
+      happy:{res:city.happy.res,com:city.happy.com,ind:city.happy.ind,off:city.happy.off},
+      demand:{R:city.demand.R,C:city.demand.C,I:city.demand.I,O:city.demand.O},
+      population:city.population, popBorn:city.popBorn, popMigrant:city.popMigrant, employed:city.employed, cycle:city.cycle,
+      cells:city.cells.map(function(c){return {t:c.type,l:c.level,p:c.people,g:c.progress,a:c.age||0,u:c.used||0};}) };
+  }
+  function deserialize(data) {
+    if (!data||data.v!==2||!Array.isArray(data.cells)||data.cells.length!==SIZE*SIZE) return null;
+    var city=createCity();
+    city.money=Number(data.money)||0;
+    city.happiness=clamp(Number(data.happiness)||0,0,100);
+    city.happy={ res:clamp(Number(data.happy&&data.happy.res)||50,0,100),
+      com:clamp(Number(data.happy&&data.happy.com)||50,0,100),
+      ind:clamp(Number(data.happy&&data.happy.ind)||50,0,100),
+      off:clamp(Number(data.happy&&data.happy.off)||50,0,100) };
+    city.demand={ R:clamp(Number(data.demand&&data.demand.R)||0,0,100),
+      C:clamp(Number(data.demand&&data.demand.C)||0,0,100),
+      I:clamp(Number(data.demand&&data.demand.I)||0,0,100),
+      O:clamp(Number(data.demand&&data.demand.O)||0,0,100) };
+    city.population=Math.max(0,Math.round(Number(data.population)||0));
+    city.popBorn=Math.max(0,Math.round(Number(data.popBorn)||0));
+    city.popMigrant=Math.max(0,Math.round(Number(data.popMigrant)||0));
+    city.employed=Math.max(0,Math.round(Number(data.employed)||0));
+    city.cycle=Math.max(0,Math.round(Number(data.cycle)||0));
+    city.cells=data.cells.map(function(d){
+      var c=makeCell(d&&d.t);
+      c.level=clamp(Math.round(Number(d&&d.l)||1),1,3);
+      c.people=Math.max(0,Number(d&&d.p)||0);
+      c.progress=Number(d&&d.g)||0;
+      c.age=Math.max(0,Math.round(Number(d&&d.a)||0));
+      c.used=Math.max(0,Number(d&&d.u)||0);
+      return c;
+    });
+    updateConnectivity(city); return city;
+  }
+
+  // ============ 与 utils/traffic.js 一致：高速 / 停车 / 车辆 ============
+  var HIGHWAY_Y=0, PARK_CAPACITY=6, MAX_CARS=100, SPEED=0.08;
+  // 四边高速（2026-11-23）：地图四条外边整圈都是高速
+  function isHighway(x,y){ return x>=0&&y>=0&&x<SIZE&&y<SIZE&&(y===HIGHWAY_Y||y===SIZE-1||x===HIGHWAY_Y||x===SIZE-1); }
+  function isPassable(c,x,y){ if(!inBounds(x,y))return false; if(isHighway(x,y))return true; return c.cells[idx(x,y)].type==='road'; }
+  function createTraffic(){ return {cars:[],lots:{},nextId:1,tick:0,jamCount:0}; }
+  function bfs(city,starts,goals){
+    if(!starts.length||!goals.length)return null;
+    var goal={},prev=new Array(SIZE*SIZE).fill(-1),q=[],i;
+    goals.forEach(function(g){goal[g]=true;});
+    starts.forEach(function(s){if(s>=0&&s<prev.length&&prev[s]===-1){prev[s]=s;q.push(s);}});
+    var head=0,found=-1;
+    while(head<q.length){
+      var cur=q[head++]; if(goal[cur]){found=cur;break;}
+      var x=cur%SIZE,y=Math.floor(cur/SIZE),ns=[[x,y-1],[x,y+1],[x-1,y],[x+1,y]];
+      for(i=0;i<4;i++){
+        var nx=ns[i][0],ny=ns[i][1]; if(!isPassable(city,nx,ny))continue;
+        var ni=idx(nx,ny); if(prev[ni]!==-1)continue;
+        prev[ni]=cur;q.push(ni);
+      }
+    }
+    if(found<0)return null;
+    var path=[],c=found;
+    while(c!==prev[c]){path.push({x:c%SIZE,y:Math.floor(c/SIZE)});c=prev[c];}
+    path.push({x:c%SIZE,y:Math.floor(c/SIZE)});path.reverse();return path;
+  }
+  function entries(city,x,y){
+    var r=[]; [[x,y-1],[x,y+1],[x-1,y],[x+1,y]].forEach(function(p){if(isPassable(city,p[0],p[1]))r.push(idx(p[0],p[1]));});
+    return r;
+  }
+  function findPath(city,sx,sy,tx,ty,via){
+    var starts=isPassable(city,sx,sy)?[idx(sx,sy)]:entries(city,sx,sy);
+    var goals=isPassable(city,tx,ty)?[idx(tx,ty)]:entries(city,tx,ty);
+    if(!starts.length||!goals.length)return null;
+    if(!via)return bfs(city,starts,goals);
+    var best=null;
+    // via 候选高速点（四边高速）：只取离起点最近的两条边，每条边取起点/终点/中点 ±2
+    var edges=[
+      {d:sy,row:true,at:HIGHWAY_Y},{d:SIZE-1-sy,row:true,at:SIZE-1},
+      {d:sx,row:false,at:HIGHWAY_Y},{d:SIZE-1-sx,row:false,at:SIZE-1}
+    ].sort(function(a,b){return a.d-b.d;}).slice(0,2);
+    var cand={};
+    edges.forEach(function(e){
+      var mids=e.row?[sx,tx,Math.round((sx+tx)/2)]:[sy,ty,Math.round((sy+ty)/2)];
+      mids.forEach(function(from){
+        for(var off=-2;off<=2;off++){var c0=from+off; if(c0>=0&&c0<SIZE){var hi=e.row?idx(c0,e.at):idx(e.at,c0); cand[hi]=true;}}
+      });
+    });
+    var hxs=Object.keys(cand).map(Number).sort(function(a,b){return a-b;});
+    hxs.forEach(function(h){
+      var p1=bfs(city,starts,[h]); if(!p1)return;
+      var p2=bfs(city,[h],goals); if(!p2)return;
+      var path=p1.concat(p2.slice(1));
+      if(!best||path.length<best.length)best=path;
+    });
+    return best;
+  }
+  function syncLots(city,tr){
+    var keep={};
+    for(var i=0;i<city.cells.length;i++){
+      if(city.cells[i].type==='parking'){
+        keep[i]=tr.lots[i]||{capacity:PARK_CAPACITY,occupied:{}};
+        var x=i%SIZE,y=Math.floor(i/SIZE),conn=false;
+        [[x,y-1],[x,y+1],[x-1,y],[x+1,y]].forEach(function(p){
+          if(!inBounds(p[0],p[1]))return;
+          var nc=city.cells[idx(p[0],p[1])];
+          if(nc.type==='road'&&nc.connected)conn=true;
+        });
+        keep[i].connected=conn;
+      }
+    }
+    tr.lots=keep;
+  }
+  function releaseCar(tr,car){
+    if(car.lot>=0&&tr.lots[car.lot]&&tr.lots[car.lot].occupied)delete tr.lots[car.lot].occupied[car.id];
+    car.lot=-1;
+  }
+  function syncCars(city,tr,maxCars){
+    var homes={},i;
+    for(i=0;i<city.cells.length;i++)if(city.cells[i].type==='res')homes[i]=true;
+    // 车辆上限（2026-11-23 bug 修复 #2，与 utils/traffic.js 一致）：等距抽样出车，
+    // 不再固定取前 MAX_CARS 栋（靠后的住宅也有车）。第三参为设置上限，缺省 100。
+    var cap=Math.max(1,Math.min(MAX_CARS,Math.round(Number(maxCars)||MAX_CARS)));
+    var list=Object.keys(homes).map(Number).sort(function(a,b){return a-b;});
+    var allowed=[];
+    if (list.length<=cap) allowed=list;
+    else { var step=list.length/cap; for(var k=0;k<cap;k++)allowed.push(list[Math.floor(k*step)]); }
+    var allowedMap={};
+    allowed.forEach(function(hi){allowedMap[hi]=true;});
+    tr.cars=tr.cars.filter(function(car){if(!allowedMap[car.home]){releaseCar(tr,car);return false;}return true;});
+    allowed.forEach(function(hi){
+      var exists=tr.cars.some(function(c){return c.home===hi;});
+      if(!exists)tr.cars.push({id:tr.nextId++,home:hi,state:'home',wait:20+Math.floor(Math.random()*40),
+        path:null,seg:0,t:0,targetLot:-1,lot:-1,jamTicks:0});
+    });
+    syncLots(city,tr);
+  }
+  // 改道回家（2026-11-23 bug 修复 #2）：目标停车场没了就沿路网回家，绝不永久堵死
+  function goHome(city,tr,car){
+    var p=carCell(car);
+    var path=findPath(city,Math.round(p.x),Math.round(p.y),car.home%SIZE,Math.floor(car.home/SIZE),false);
+    releaseCar(tr,car); car.targetLot=-1;
+    if (path&&path.length>=2){car.path=path;car.seg=0;car.t=0;car.state='inbound';}
+    else {car.path=null;car.seg=0;car.t=0;car.state='home';car.wait=30;}
+  }
+  // 重新找车位（2026-11-23 bug 修复 #2）：车开往的停车场被拆后立刻改道
+  function retargetCar(city,tr,car){
+    var lot=chooseLot(city,tr,car);
+    if (lot>=0&&tr.lots[lot]){
+      var p=carCell(car);
+      var path=findPath(city,Math.round(p.x),Math.round(p.y),lot%SIZE,Math.floor(lot/SIZE),false);
+      if (path&&path.length>=2){car.path=path;car.seg=0;car.t=0;car.targetLot=lot;return;}
+    }
+    goHome(city,tr,car);
+  }
+  function canBuildAt(x,y){ if(!inBounds(x,y))return{ok:false,reason:'地图边界外不能操作'}; if(isHighway(x,y))return{ok:false,reason:'高速路面不可建造'}; return{ok:true}; }
+  // 建造门禁（UI 层规则）：除 查看/道路/拆除 外全部建筑必须紧邻接入高速的连通道路；道路可自由铺
+  var ZONE_TOOLS=['res','com','ind','off','park','parking',
+    'utility','police','fire','clinic','edu1','edu2','edu3','waste','cemetery'];
+  function zoneUnlocked(x,y){
+    updateConnectivity(city);
+    var ns=[[x,y-1],[x,y+1],[x-1,y],[x+1,y]];
+    for(var i=0;i<ns.length;i++){
+      var nx=ns[i][0],ny=ns[i][1];
+      if(!inBounds(nx,ny))continue;
+      var c=city.cells[idx(nx,ny)];
+      if(c.type==='road'&&c.connected)return true;
+    }
+    return false;
+  }
+  function placeParking(city,tr,x,y){
+    // 统一校验：先走 canPlace（空地/资金/边界），再挡高速路面
+    var g0=canPlace(city,x,y,'parking',1); if(!g0.ok)return{ok:false,reason:g0.reason};
+    var g=canBuildAt(x,y); if(!g.ok)return g;
+    var c=city.cells[idx(x,y)];
+    city.money-=PRICE.parking; c.type='parking'; c.level=1; c.people=0; c.progress=0;
+    syncLots(city,tr); return{ok:true,changed:true};
+  }
+  function usedOf(lot){ return Object.keys(lot.occupied).length; }
+  function isFree(lot){ return !!lot&&usedOf(lot)<lot.capacity; }
+  function lotKeys(tr){ return Object.keys(tr.lots).map(Number); }
+  function chooseLot(city,tr,car){
+    var list=lotKeys(tr); if(!list.length)return -1;
+    var hx=car.home%SIZE,hy=Math.floor(car.home/SIZE),best=-1,bestScore=Infinity;
+    list.forEach(function(li){
+      var score=Math.abs(li%SIZE-hx)+Math.abs(Math.floor(li/SIZE)-hy)+(isFree(tr.lots[li])?0:1000);
+      if(score<bestScore){bestScore=score;best=li;}
+    });
+    return best;
+  }
+  function carCell(car){
+    if(car.state==='home')return{x:car.home%SIZE,y:Math.floor(car.home/SIZE)};
+    if(car.state==='lot'){var li=car.lot>=0?car.lot:car.targetLot;if(li>=0)return{x:li%SIZE,y:Math.floor(li/SIZE)};}
+    if(car.path&&car.path.length){
+      var a=car.path[Math.min(car.seg,car.path.length-1)],b=car.path[Math.min(car.seg+1,car.path.length-1)];
+      return{x:a.x+(b.x-a.x)*car.t,y:a.y+(b.y-a.y)*car.t};
+    }
+    return{x:car.home%SIZE,y:Math.floor(car.home/SIZE)};
+  }
+  function firstFreeLot(city,tr,car){
+    var p=carCell(car),cx=Math.round(p.x),cy=Math.round(p.y),best=-1,bestD=Infinity;
+    lotKeys(tr).forEach(function(li){
+      if(!isFree(tr.lots[li]))return;
+      var d=Math.abs(li%SIZE-cx)+Math.abs(Math.floor(li/SIZE)-cy);
+      if(d<bestD){bestD=d;best=li;}
+    });
+    return best;
+  }
+  function arrive(city,tr,car){
+    car.path=null;car.seg=0;car.t=0;
+    if(car.state==='outbound'){
+      var li=car.targetLot,cell=city.cells[li];
+      if(cell&&cell.type==='parking'&&isFree(tr.lots[li])){
+        tr.lots[li].occupied[car.id]=true;car.lot=li;car.state='lot';car.wait=120+Math.floor(Math.random()*180);
+      }else{car.state='jam';car.jamTicks=0;}
+    }else if(car.state==='inbound'){
+      car.state='home';car.wait=20+Math.floor(Math.random()*40);car.lot=-1;car.targetLot=-1;
+    }
+  }
+  function trafficTick(city,tr,maxCars){
+    tr.tick++;syncLots(city,tr);syncCars(city,tr,maxCars);
+    var jam=0,driving=0,atHome=0,atLot=0,n;
+    for(n=0;n<tr.cars.length;n++){
+      var car=tr.cars[n];
+      if(car.state==='home'){
+        atHome++;car.wait--;
+        if(car.wait<=0){
+          var lot=chooseLot(city,tr,car); if(lot<0){car.wait=20;continue;}
+          var path=findPath(city,car.home%SIZE,Math.floor(car.home/SIZE),lot%SIZE,Math.floor(lot/SIZE),true);
+          if(!path){car.wait=20;continue;}
+          car.path=path;car.seg=0;car.t=0;car.targetLot=lot;car.state='outbound';
+        }
+        continue;
+      }
+      // 停在停车场时车位被拆（2026-11-23 bug 修复 #2）：直接判定回家
+      if(car.state==='lot'&&car.lot>=0&&!tr.lots[car.lot]){
+        releaseCar(tr,car);car.state='home';car.wait=20;car.targetLot=-1;continue;
+      }
+      if(car.state==='lot'){
+        atLot++;car.wait--;
+        if(car.wait<=0){
+          var li=car.lot>=0?car.lot:car.targetLot;
+          var path=findPath(city,li%SIZE,Math.floor(li/SIZE),car.home%SIZE,Math.floor(car.home/SIZE),true);
+          if(!path){car.wait=20;continue;}
+          releaseCar(tr,car);car.path=path;car.seg=0;car.t=0;car.state='inbound';
+        }
+        continue;
+      }
+      if(car.state==='jam'){
+        jam++;car.jamTicks++;
+        // 一个停车场都不剩（2026-11-23 bug 修复 #2）：不再永久堵死，立刻回家
+        if(!lotKeys(tr).length){goHome(city,tr,car);continue;}
+        if(car.jamTicks%10===0){
+          var free=firstFreeLot(city,tr,car);
+          if(free>=0){
+            var p=carCell(car);
+            var path=findPath(city,Math.round(p.x),Math.round(p.y),free%SIZE,Math.floor(free/SIZE),false);
+            if(path){car.path=path;car.seg=0;car.t=0;car.targetLot=free;car.state='outbound';}
+          }
+        }
+        continue;
+      }
+      // outbound：目的地车位被拆（2026-11-23 bug 修复 #2）→ 立刻改道
+      if(car.state==='outbound'&&(car.targetLot<0||!tr.lots[car.targetLot])){
+        retargetCar(city,tr,car);continue;
+      }
+      driving++;
+      if(!car.path||car.path.length<2){arrive(city,tr,car);continue;}
+      car.t+=SPEED;
+      while(car.t>=1){car.t-=1;car.seg++;if(car.seg>=car.path.length-1){arrive(city,tr,car);break;}}
+    }
+    tr.jamCount=jam;
+    return{total:tr.cars.length,home:atHome,lot:atLot,driving:driving,jam:jam};
+  }
+  function parkingInfo(tr,x,y){
+    var lot=tr&&tr.lots[idx(x,y)]; if(!lot)return null;
+    var used=usedOf(lot);
+    return{capacity:lot.capacity,used:used,free:lot.capacity-used,connected:!!lot.connected};
+  }
+  // 序列化（2026-11-23 bug 修复 #8，与 utils/traffic.js 一致）：车辆完整状态一并保存
+  function serializeTraffic(tr){
+    return { lots:lotKeys(tr), nextId:tr.nextId,
+      cars:tr.cars.map(function(car){
+        return { id:car.id, home:car.home, state:car.state, wait:car.wait,
+          seg:car.seg, t:car.t, targetLot:car.targetLot, lot:car.lot, jamTicks:car.jamTicks||0,
+          path:car.path?car.path.map(function(p){return [p.x,p.y];}):null };
+      }) };
+  }
+  var CAR_STATES={home:1,lot:1,outbound:1,inbound:1,jam:1};
+  function deserializeTraffic(data,city){
+    var tr=createTraffic();
+    if(data&&Array.isArray(data.lots))data.lots.forEach(function(i){if(city.cells[i]&&city.cells[i].type==='parking')tr.lots[i]={capacity:PARK_CAPACITY,occupied:{}};});
+    if(data&&data.nextId)tr.nextId=Number(data.nextId)||1;
+    // 还原车辆（2026-11-23 bug 修复 #8）：非法/失效的丢弃，一辆没有才重新生成
+    var maxId=0;
+    if(data&&Array.isArray(data.cars)){
+      data.cars.forEach(function(d){
+        if(!d||!city.cells[d.home]||city.cells[d.home].type!=='res')return;
+        if(!CAR_STATES[d.state])return;
+        var path=null;
+        if(Array.isArray(d.path)&&d.path.length>=2){
+          path=d.path.map(function(p){return {x:Number(p[0])||0,y:Number(p[1])||0};})
+            .filter(function(p){return isPassable(city,p.x,p.y);});
+          if(path.length<2)path=null;
+        }
+        var car={ id:Math.max(1,Math.round(Number(d.id)||0)), home:d.home,
+          state:path?d.state:(d.state==='outbound'||d.state==='inbound'?'home':d.state),
+          wait:Math.max(0,Math.round(Number(d.wait)||0)),
+          seg:Math.max(0,Math.round(Number(d.seg)||0)),
+          t:Math.min(0.999,Math.max(0,Number(d.t)||0)),
+          targetLot:Math.round(Number(d.targetLot)||-1),
+          lot:Math.round(Number(d.lot)||-1),
+          jamTicks:Math.max(0,Math.round(Number(d.jamTicks)||0)),
+          path:path };
+        if(!path&&(car.state==='outbound'||car.state==='inbound'))car.state='home';
+        if(car.state==='lot'&&(car.lot<0||!tr.lots[car.lot]))car.state='home';
+        if(tr.cars.some(function(c){return c.id===car.id||c.home===car.home;}))return;
+        tr.cars.push(car);
+        if(car.id>maxId)maxId=car.id;
+      });
+    }
+    if(maxId>0)tr.nextId=Math.max(tr.nextId,maxId+1);
+    if(tr.cars.length){
+      tr.cars.forEach(function(car){
+        if(car.state==='lot'&&car.lot>=0&&tr.lots[car.lot])tr.lots[car.lot].occupied[car.id]=true;
+      });
+      syncLots(city,tr);
+    } else syncCars(city,tr);
+    return tr;
+  }
+
+  // ============ 与 utils/render.js 一致的等距渲染（程序化占位贴图） ============
+  var TILE_W=96, TILE_H=48, A=48, B=24;
+  var BUILD_HEIGHT={1:48,2:72,3:96}, BUILD_H=BUILD_HEIGHT[3], FOOT_RATIO=0.72;
+  var VIEW_W=940, VIEW_H=380, scale=1, fit=1, zoom=1, rot=0, camX=0, camY=0, originX=0, originY=0;
+  var MIN_ZOOM=1, MAX_ZOOM=6, CAMERA_ZOOM=3;
+  var COLORS = {
+    ground:'#2E4A3D',
+    road_straight:'#8C96A8', road_straight_h:'#8C96A8', road_corner:'#8C96A8', road_t:'#8C96A8', road_cross:'#8C96A8',
+    res1:'#5FCF86', res2:'#3FB768', res3:'#2E9552',
+    com1:'#7FB6FF', com2:'#4A8FEA', com3:'#2C6BC4',
+    ind1:'#F5AE63', ind2:'#E9873C', ind3:'#C9661F',
+    off1:'#B9A6E8', off2:'#9279D8', off3:'#6F55B8',
+    utility:'#4EC9D8', police:'#5A78C8', fire:'#E86A5A', clinic:'#7FE0C8',
+    edu1:'#E8C97F', edu2:'#D8A85F', edu3:'#C88A3F',
+    waste:'#8A9A6A', cemetery:'#9FB0A0',
+    park:'#5FC47A', parking:'#4B586B'
+  };
+  // 立体建筑（随等级升高）与平铺地块（阴影+菱形），与 utils/render.js 一致
+  var TALL_TYPES={ res:true, com:true, ind:true, off:true,
+    utility:true, police:true, fire:true, clinic:true,
+    edu1:true, edu2:true, edu3:true, waste:true };
+  // ===== 贴图：与小程序 assets/sprites 同一套 30 张 PNG（预览不再画纯色方块）=====
+  // 贴图加载失败时下面各处仍回退到 drawBuilding / drawSprite 的程序化绘制。
+  var SPRITE_NAMES=['ground','road_straight','road_straight_h','road_corner','road_t','road_cross',
+    'park','parking','cemetery','shadow','res1','res2','res3','com1','com2','com3',
+    'ind1','ind2','ind3','off1','off2','off3','utility','police','fire','clinic',
+    'edu1','edu2','edu3','waste'];
+  var SPR={}, sprDone=0, sprFailShown=false;
+  // 2D 降级专用：3D 模式不需要任何 PNG（立面由 render3d 程序化绘制）
+  function loadSprites(){
+    SPRITE_NAMES.forEach(function(name){
+      var img=new Image();
+      img.onload=function(){
+        SPR[name]=img; sprDone++;
+        if(sprDone>=SPRITE_NAMES.length && typeof render==='function' && ctx){
+          try{ render(ctx,city,tr,hoverIdx,pedMapCache); }catch(e){}
+        }
+      };
+      img.onerror=function(){
+        sprDone++;
+        // 贴图加载失败要提示（2026-11-23 bug 修复 #6）：玩家看到纯色时知道是贴图丢了
+        if(!sprFailShown){ sprFailShown=true; toastOnce('贴图加载失败，已回退纯色绘制'); }
+      };
+      img.src='assets/sprites/'+name+'.png';
+    });
+  }
+  var FLAT_TYPES={ park:true, parking:true, cemetery:true };
+  // 相机：整图适配（fit）再乘 zoom；50×50 全图每格仅约 10px，默认放大 3 倍
+  function layout() {
+    var lw=(SIZE-1)*TILE_W+TILE_W, lh=(SIZE-1)*TILE_H+TILE_H+BUILD_H;
+    fit=Math.min(VIEW_W/lw, VIEW_H/lh);
+    zoom=1; scale=fit; rot=0;
+    camX=0; camY=(SIZE-1)*B;
+    originX=VIEW_W/2;
+    originY=VIEW_H/2-camY*scale+BUILD_H*scale/2;
+  }
+  function clampCamera(){
+    var hx=(SIZE-1)*A, hy=(SIZE-1)*B;
+    camX=Math.max(-hx,Math.min(hx,camX));
+    camY=Math.max(0,Math.min(2*hy,camY));
+    originY=VIEW_H/2-camY*scale+BUILD_H*scale/2;
+  }
+  function screenToWorld(sx,sy){ return { wx:(sx-VIEW_W/2)/scale+camX, wy:(sy-VIEW_H/2-BUILD_H*scale/2)/scale+camY }; }
+  function setZoom(z,fx,fy){
+    if (R3) { R3.setCamera({ dist: 78/Math.max(MIN_ZOOM,Math.min(MAX_ZOOM,z)) }); return; }
+    var sx=(fx===undefined?VIEW_W/2:fx), sy=(fy===undefined?VIEW_H/2:fy);
+    var before=screenToWorld(sx,sy);
+    zoom=Math.max(MIN_ZOOM,Math.min(MAX_ZOOM,z));
+    scale=fit*zoom;
+    camX=before.wx-(sx-VIEW_W/2)/scale;
+    camY=before.wy-(sy-VIEW_H/2-BUILD_H*scale/2)/scale;
+    clampCamera();
+  }
+  function panBy(dx,dy){ camX-=dx/scale; camY-=dy/scale; clampCamera(); }
+  function setCenterGrid(gx,gy){
+    if (R3) { R3.setTarget(gx,gy); return; }
+    camX=(gx-gy)*A; camY=(gx+gy)*B; clampCamera();
+  }
+  // ---- 视角旋转（与 utils/render.js 一致，仅支持 90° 整数倍）----
+  var CENTER=(SIZE-1)/2;
+  function rotPoint(x,y,r){
+    switch(((r%4)+4)%4){
+      case 1: return {x:-y,y:x};
+      case 2: return {x:-x,y:-y};
+      case 3: return {x:y,y:-x};
+      default: return {x:x,y:y};
+    }
+  }
+  function toView(x,y){ var p=rotPoint(x-CENTER,y-CENTER,rot); return {u:Math.round(p.x+CENTER),v:Math.round(p.y+CENTER)}; }
+  function toWorld(u,v){ var p=rotPoint(u-CENTER,v-CENTER,-rot); return {x:Math.round(p.x+CENTER),y:Math.round(p.y+CENTER)}; }
+  function toViewF(x,y){ var p=rotPoint(x-CENTER,y-CENTER,rot); return {u:p.x+CENTER,v:p.y+CENTER}; }
+  function toWorldF(u,v){ var p=rotPoint(u-CENTER,v-CENTER,-rot); return {x:p.x+CENTER,y:p.y+CENTER}; }
+  function toScreenView(u,v) {
+    return { x:VIEW_W/2+((u-v)*A-camX)*scale,
+             y:VIEW_H/2+((u+v)*B-camY)*scale+BUILD_H*scale/2 };
+  }
+  function toScreen(x,y){ var g=toView(x,y); return toScreenView(g.u,g.v); }
+  function toGrid(sx,sy) {
+    var w=screenToWorld(sx,sy);
+    var dx=w.wx/A, dy=w.wy/B;
+    var u=Math.round((dx+dy)/2), v=Math.round((dy-dx)/2);
+    if (u<0||v<0||u>=SIZE||v>=SIZE) return null;
+    var g=toWorld(u,v);
+    if (!inBounds(g.x,g.y)) return null;
+    return {x:g.x,y:g.y,i:idx(g.x,g.y)};
+  }
+  // 旋转时保持「屏幕中心对应的世界点」不动
+  function setRotation(r) {
+    var next=((Math.round(r)%4)+4)%4;
+    if (next===rot) return rot;
+    var dx=camX/A, dy=camY/B;
+    var cu=(dx+dy)/2, cv=(dy-dx)/2;
+    var start=toWorldF(cu,cv);
+    rot=next;
+    var p=toViewF(start.x,start.y);
+    camX=(p.u-p.v)*A; camY=(p.u+p.v)*B;
+    clampCamera();
+    return rot;
+  }
+  function rotateBy(d){ return setRotation(rot+d); }
+  function isRoad(city,x,y){ if(!inBounds(x,y))return false; if(y===HIGHWAY_Y||y===SIZE-1||x===HIGHWAY_Y||x===SIZE-1)return true; return city.cells[idx(x,y)].type==='road'; }
+  function isRoadView(city,u,v){ if(u<0||v<0||u>=SIZE||v>=SIZE)return false; var g=toWorld(u,v); return isRoad(city,g.x,g.y); }
+  function roadVariant(city,x,y) {
+    var uv=toView(x,y);
+    var n=isRoadView(city,uv.u,uv.v-1), s=isRoadView(city,uv.u,uv.v+1),
+        w=isRoadView(city,uv.u-1,uv.v), e=isRoadView(city,uv.u+1,uv.v);
+    var count=(n?1:0)+(s?1:0)+(w?1:0)+(e?1:0);
+    if (count===4) return 'cross';
+    if (count===3) return 't';
+    if (count===2) return ((n&&s)||(w&&e))?'straight':'corner';
+    return 'straight';
+  }
+  // 直道走向细分：四邻识别仍由 roadVariant 完成，不改判定；横向 w-e 直道
+  // 换 road_straight_h，避免车道线横切成"枕木"（与 utils/render.js 一致）。
+  function straightVariant(city,x,y) {
+    var uv=toView(x,y);
+    var w=isRoadView(city,uv.u-1,uv.v), e=isRoadView(city,uv.u+1,uv.v);
+    var n=isRoadView(city,uv.u,uv.v-1), s=isRoadView(city,uv.u,uv.v+1);
+    if ((w||e)&&!(n||s)) return 'road_straight_h';
+    return 'road_straight';
+  }
+  function spriteKey(cell,city,x,y) {
+    if (cell.type==='empty') return 'ground';
+    if (cell.type==='road') {
+      var variant=roadVariant(city,x,y);
+      if (variant==='straight') return straightVariant(city,x,y);
+      return 'road_'+variant;
+    }
+    if (cell.type==='off') return 'off'+cell.level;
+    if (cell.type==='res'||cell.type==='com'||cell.type==='ind') return cell.type+cell.level;
+    if (TALL_TYPES[cell.type]) return cell.type;
+    if (cell.type==='park') return 'park';
+    if (cell.type==='parking') return 'parking';
+    if (cell.type==='cemetery') return 'cemetery';
+    return 'ground';
+  }
+  function shade(hex,f) {
+    var n=parseInt(hex.slice(1),16);
+    var r=Math.min(255,Math.max(0,Math.round(((n>>16)&255)*f)));
+    var g=Math.min(255,Math.max(0,Math.round(((n>>8)&255)*f)));
+    var b=Math.min(255,Math.max(0,Math.round((n&255)*f)));
+    return 'rgb('+r+','+g+','+b+')';
+  }
+  function diamond(ctx,cx,cy,hw,hh,fill) {
+    ctx.beginPath();
+    ctx.moveTo(cx,cy-hh); ctx.lineTo(cx+hw,cy);
+    ctx.lineTo(cx,cy+hh); ctx.lineTo(cx-hw,cy);
+    ctx.closePath(); ctx.fillStyle=fill; ctx.fill();
+  }
+  function poly(ctx,pts,fill,stroke) {
+    ctx.beginPath(); ctx.moveTo(pts[0][0],pts[0][1]);
+    for (var i=1;i<pts.length;i++) ctx.lineTo(pts[i][0],pts[i][1]);
+    ctx.closePath(); ctx.fillStyle=fill; ctx.fill();
+    if (stroke) { ctx.strokeStyle=stroke; ctx.lineWidth=1; ctx.stroke(); }
+  }
+  // 建筑几何（贴地规则）：底面菱形中心 == 地块菱形中心 (cx,cy)，
+  // 贴图底边中点贴到「底面前顶点」(cx, cy+rh)，与 utils/render.js 完全一致。
+  // 服务建筑高度（与 gen_sprites.py / utils/render.js 一致）：小学最矮、大学最高
+  var SERVICE_HEIGHT = { utility:56, police:56, fire:56, clinic:48, edu1:44, edu2:64, edu3:96, waste:36 };
+  function buildingHeight(type, level) {
+    if (SERVICE_HEIGHT[type]!==undefined) return SERVICE_HEIGHT[type];
+    return BUILD_HEIGHT[Math.max(1,Math.min(3,level))];
+  }
+  function buildingGeometry(cx,cy,w,s,type,level) {
+    var H=buildingHeight(type,level)*s;
+    var bw=w*FOOT_RATIO, rh=bw/4, wall=H-2*rh;
+    var Bp=[cx,cy+rh], Fy=cy, Ty=Fy-wall;
+    var T=[cx,cy+rh-H], L=[cx-bw/2,Ty], R=[cx+bw/2,Ty], B=[cx,Ty+rh];
+    var Lp=[cx-bw/2,Fy], Rp=[cx+bw/2,Fy];
+    return {cx:cx,cy:cy,H:H,bw:bw,rh:rh,wall:wall,Fy:Fy,Ty:Ty,T:T,L:L,R:R,B:B,Lp:Lp,Rp:Rp,Bp:Bp};
+  }
+  function spriteRect(cx,cy,w,s,type,level) {
+    var H=buildingHeight(type,level)*s;
+    var rh=(w*FOOT_RATIO)/4;
+    return {x:cx-w/2,y:cy+rh-H,w:w,h:H};
+  }
+  // 接触阴影（AO 圈）：与底面同心、只略大于底面，几乎全被建筑盖住，
+  // 只在底边露出一薄圈——不偏移、不放成投影，避免"悬浮物体影子"的错觉。
+  function buildingShadow(ctx,geo,h) {
+    var hw=geo.bw*0.545, hh=geo.rh*1.10;
+    diamond(ctx,geo.cx,geo.cy,hw,hh,'rgba(6,12,8,0.30)');
+  }
+  function drawBuilding(ctx,geo,color) {
+    poly(ctx,[geo.L,geo.B,geo.Bp,geo.Lp],shade(color,0.78));
+    poly(ctx,[geo.B,geo.R,geo.Rp,geo.Bp],shade(color,0.62));
+    poly(ctx,[geo.T,geo.R,geo.B,geo.L],shade(color,1.0),shade(color,0.88));
+  }
+  function buildingOverlay(ctx,geo) {
+    poly(ctx,[geo.T,geo.R,geo.Rp,geo.Bp,geo.Lp,geo.L],'rgba(10,16,12,0.52)');
+  }
+  // 道路分隔线按实际四邻动态绘制，与 utils/render.js drawRoadLines 一致。
+  // 相邻两格共享边中点，线自动连成一条；拐角/T/环路任意朝向都能对齐。
+  function drawRoadLines(ctx,city,x,y,p,w,h) {
+    var uv=toView(x,y), seg=[];
+    if (isRoadView(city,uv.u,uv.v-1)) seg.push([w/4,-h/4]);
+    if (isRoadView(city,uv.u,uv.v+1)) seg.push([-w/4,h/4]);
+    if (isRoadView(city,uv.u-1,uv.v)) seg.push([-w/4,-h/4]);
+    if (isRoadView(city,uv.u+1,uv.v)) seg.push([w/4,h/4]);
+    if (!seg.length) return;
+    ctx.save();
+    ctx.strokeStyle='rgba(232,238,246,0.92)';
+    ctx.lineWidth=Math.max(1,h*0.075);
+    ctx.lineCap='round';
+    seg.forEach(function(e){ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(p.x+e[0],p.y+e[1]);ctx.stroke();});
+    ctx.restore();
+  }
+  function drawSprite(ctx,key,cx,cy,w,h,s) {
+    var color=COLORS[key]||'#FFFFFF';
+    diamond(ctx,cx,cy,w/2,h/2,color);
+    if (key==='park') {
+      ctx.fillStyle='#308A4C';
+      [[-8,2,4],[8,6,3],[0,-6,3]].forEach(function(t){
+        ctx.beginPath(); ctx.arc(cx+t[0]*s,cy+t[1]*s,Math.max(1,t[2]*s),0,Math.PI*2); ctx.fill();
+      });
+    } else if (key==='cemetery') {
+      ctx.fillStyle='rgba(226,232,228,0.9)';
+      [[-9,0],[0,3],[8,-2]].forEach(function(t){
+        ctx.fillRect(cx+t[0]*s-1.5*s,cy+t[1]*s-3*s,3*s,5*s);
+      });
+    }
+  }
+  // 高速：菱形沥青 + 两条白色虚线。横边（y=0 / y=SIZE-1）沿行方向、竖边（x=0 / x=SIZE-1）沿列方向；
+  // rot 为 90° 奇数倍时两条对角线互换
+  function drawHighway(ctx,p,w,h,vertical){
+    diamond(ctx,p.x,p.y,w/2,h/2,'#333E4E');
+    var flip=(rot%2===1)?-1:1;
+    var dx=(vertical?-flip:flip)*w/2,dy=h/2,len=Math.sqrt(dx*dx+dy*dy);
+    var ox=(-dy/len)*h*0.16,oy=(dx/len)*h*0.16;
+    ctx.save();ctx.strokeStyle='rgba(240,244,250,0.78)';ctx.lineWidth=Math.max(1,h*0.035);
+    ctx.setLineDash([Math.max(2,w*0.07),Math.max(2,w*0.05)]);
+    [-1,1].forEach(function(sign){ctx.beginPath();ctx.moveTo(p.x-dx+ox*sign,p.y-dy+oy*sign);ctx.lineTo(p.x+dx+ox*sign,p.y+dy+oy*sign);ctx.stroke();});
+    ctx.restore();
+  }
+  function drawParking(ctx,p,w,h,lot,s){
+    diamond(ctx,p.x,p.y,w/2,h/2,'#3B4657');
+    ctx.save();ctx.strokeStyle='rgba(255,255,255,0.72)';ctx.lineWidth=Math.max(1,1.2*s);
+    ctx.beginPath();ctx.moveTo(p.x,p.y-h/2);ctx.lineTo(p.x+w/2,p.y);ctx.lineTo(p.x,p.y+h/2);ctx.lineTo(p.x-w/2,p.y);ctx.closePath();ctx.stroke();
+    ctx.font='bold '+Math.max(7,Math.round(h*0.5))+'px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillStyle='rgba(255,255,255,0.9)';ctx.fillText('P',p.x,p.y-h*0.04);
+    var cap=lot?lot.capacity:6,sw=Math.max(3,(w*0.52)/cap),sh=Math.max(2,h*0.09);
+    var used=lot?Object.keys(lot.occupied).length:0;
+    for(var k=0;k<cap;k++){
+      ctx.fillStyle=k<used?'#7BD88F':'rgba(255,255,255,0.28)';
+      ctx.fillRect(p.x-(cap*sw)/2+k*sw+0.5,p.y+h*0.22,sw-1,sh);
+    }
+    ctx.restore();
+  }
+  function carColor(car){
+    if(car.state==='jam')return '#F04444';
+    if(car.state==='home')return '#7BD88F';
+    if(car.state==='lot')return '#69A9FF';
+    if(car.state==='inbound')return '#F2D98D';
+    return '#FFFFFF';
+  }
+  function drawCar(ctx,sx,sy,s,car){
+    var w=Math.max(7,17*s),hh=Math.max(4,9*s);
+    ctx.save();
+    ctx.fillStyle='rgba(0,0,0,0.28)';ctx.fillRect(sx-w/2+1,sy+hh/2,w,hh*0.4);
+    ctx.fillStyle=carColor(car);ctx.fillRect(sx-w/2,sy-hh/2,w,hh);
+    ctx.fillStyle='rgba(22,32,47,0.55)';ctx.fillRect(sx-w*0.18,sy-hh/2+1,w*0.36,hh-2);
+    if(car.state==='jam'){
+      ctx.fillStyle='#FFFFFF';ctx.font='bold '+Math.max(7,Math.round(9*s))+'px sans-serif';ctx.textAlign='center';ctx.fillText('!',sx,sy-hh);
+    }else if(car.state==='home'||car.state==='lot'){
+      ctx.fillStyle='rgba(255,255,255,0.92)';ctx.font='bold '+Math.max(6,Math.round(7*s))+'px sans-serif';ctx.textAlign='center';ctx.fillText('P',sx,sy-hh);
+    }
+    ctx.restore();
+  }
+  function carsByCell(tr){
+    var map={}; if(!tr||!tr.cars)return map;
+    tr.cars.forEach(function(car){
+      var p=carCell(car); if(p.x<0||p.y<0||p.x>=SIZE||p.y>=SIZE)return;
+      var key=Math.floor(p.y)*SIZE+Math.floor(p.x);
+      if(!map[key])map[key]=[]; map[key].push(car);
+    });
+    return map;
+  }
+  // 两遍绘制（与 utils/render.js 一致）：pass 0 只铺地面，pass 1 画建筑/车辆/行人。
+  // 单遍会让后一格的地面菱形盖住后方建筑立面的下半截（楼被削平、看着悬浮）。
+  // 3D / 2D 渲染调度：R3 存在时走 render3d.drawFrame（昼夜 uTint 内置、悬停高亮内置），
+  // 否则降级走 2D 两遍绘制（render2D）。车辆/行人汇总仍读 carMapCache/pedMapCache 缓存。
+  function effectiveDaylightPreview(){ return settings.dayNight?daylight(gameClock):1; }
+  function visibleTrafficPreview(){
+    if(!tr)return {cars:[],lots:{},jamCount:0};
+    return {cars:(settings.showActors?tr.cars.slice(0,settings.maxCars):[]),lots:tr.lots,jamCount:tr.jamCount};
+  }
+  function visiblePedsPreview(){
+    if(!gamePeds||!settings.showActors)return {peds:[]};
+    return {peds:gamePeds.peds.slice(0,settings.pedMax)};
+  }
+  function render(ctx,city,tr,hoverIdx,peds){
+    var hi=settings.buildPreview?hoverIdx:-1;
+    if (R3) R3.drawFrame(city,visibleTrafficPreview(),hi,visiblePedsPreview(),effectiveDaylightPreview(),VIEW_W,VIEW_H);
+    else render2D(ctx,city,tr,hi,visiblePedsPreview());
+  }
+  // 合并同一帧内的多次重绘请求（拖动铺路一帧可能改好几格，没必要每格都全量重建+重绘）
+  var renderQueued=false;
+  function requestRender(){
+    if(renderQueued) return;
+    renderQueued=true;
+    requestAnimationFrame(function(){
+      renderQueued=false;
+      // try/catch（2026-11-23 bug 修复 #6）：渲染抛错也不卡死队列，下一帧仍能重绘
+      try{ render(ctx,city,tr,hoverIdx,pedMapCache); }catch(e){}
+    });
+  }
+  // ============ 可视化叠加层（2026-11-23 优化 #3）============
+  // 关 → 路网连通 → 拥堵热力 → 污染/噪音。只画半透明色块，不改模拟数据。
+  var OVERLAY_MODES=[
+    {key:'',name:'关闭',legend:[]},
+    {key:'conn',name:'路网连通',legend:[['#29B86B','已接入高速路网'],['#ED3838','断头路 / 未连通建筑']]},
+    {key:'jam',name:'拥堵热力',legend:[['#FCD43E','1 辆'],['#FA8F1F','2 辆'],['#F53329','3 辆以上']]},
+    {key:'env',name:'污染 / 噪音',legend:[['#F25A1A','污染（越高越深）'],['#B351F2','噪音']]}
+  ];
+  var overlayIdx=0, jamMap={};
+  function jamGrid(){
+    var m={};
+    (tr&&tr.cars?tr.cars:[]).forEach(function(car){
+      var x=-1,y=-1;
+      if(car.path&&car.path.length){var a=car.path[Math.min(car.seg,car.path.length-1)];x=a.x;y=a.y;}
+      else if(car.state==='lot'&&(car.lot>=0||car.targetLot>=0)){var li=car.lot>=0?car.lot:car.targetLot;x=li%SIZE;y=Math.floor(li/SIZE);}
+      else if(car.home>=0){x=car.home%SIZE;y=Math.floor(car.home/SIZE);}
+      if(x<0||y<0||x>=SIZE||y>=SIZE)return;
+      var k=y*SIZE+x; m[k]=(m[k]||0)+1;
+    });
+    return m;
+  }
+  function overlayColor(city,cell,x,y){
+    var mode=OVERLAY_MODES[overlayIdx].key, i=idx(x,y);
+    if(mode==='conn'){
+      if(cell.type==='road')return cell.connected?'rgba(41,184,107,.45)':'rgba(237,56,56,.50)';
+      if(cell.type!=='empty'&&!cell.connected)return 'rgba(242,60,48,.40)';
+      return null;
+    }
+    if(mode==='jam'){
+      var n=jamMap[i]||0; if(!n)return null;
+      return n>=3?'rgba(245,51,41,.62)':(n===2?'rgba(250,143,31,.62)':'rgba(252,212,62,.55)');
+    }
+    if(mode==='env'){
+      var p=city.pollution[i]||0,q=city.noise[i]||0;
+      if(p<0.06&&q<0.06)return null;
+      if(p>=q)return 'rgba(242,90,26,'+(0.30+Math.min(1,p)*0.42).toFixed(2)+')';
+      return 'rgba(179,81,242,.42)';
+    }
+    return null;
+  }
+  // 叠加层按钮高亮：当前档那枚亮蓝（2026-11-24 拆成独立按钮后单独抽出来，启动时也要刷一次）
+  function paintOverlayButtons(){
+    var btns=document.querySelectorAll('#canvasTools [data-ov]');
+    for(var i=0;i<btns.length;i++){
+      var on=Number(btns[i].getAttribute('data-ov'))===overlayIdx;
+      btns[i].classList.toggle('active', on);
+    }
+  }
+  function applyOverlay(){
+    var m=OVERLAY_MODES[overlayIdx];
+    if(R3)R3.setOverlay(m.key);
+    paintOverlayButtons();
+    var lg=byId('overlayLegend');
+    if(m.key){
+      lg.innerHTML=m.legend.map(function(x){return '<span><i style="background:'+x[0]+'"></i>'+x[1]+'</span>';}).join('');
+      lg.classList.add('show');
+    }else{
+      lg.classList.remove('show');lg.innerHTML='';
+      lg.style.left='';lg.style.top='';lg.style.right='';  // 回到右上角默认位置
+    }
+    render(ctx,city,tr,hoverIdx,pedMapCache);
+  }
+  function render2D(ctx,city,tr,hoverIdx,peds){
+    var w=TILE_W*scale, h=TILE_H*scale, cars=(settings.showActors?carMapCache:{});   // 审计 #20：读缓存，不在每帧重建
+    jamMap=overlayIdx===2?jamGrid():{};                     // 拥堵热力：每帧按瞬时车流重建
+    ctx.clearRect(0,0,VIEW_W,VIEW_H);
+    ctx.fillStyle='#1B2A24'; ctx.fillRect(0,0,VIEW_W,VIEW_H);
+    for (var pass=0;pass<2;pass++) {
+    for (var sum=0;sum<=2*(SIZE-1);sum++) {
+      for (var u=0;u<SIZE;u++) {
+        var v=sum-u; if (v<0||v>=SIZE) continue;
+        var g=toWorld(u,v), x=g.x, y=g.y;
+        if (x<0||y<0||x>=SIZE||y>=SIZE) continue;
+        var cell=city.cells[idx(x,y)], p=toScreenView(u,v), key=idx(x,y);
+        // 视野裁剪：放大后只画屏幕附近的格子（建筑最高伸出 BUILD_H）
+        if (p.x+w/2<0||p.x-w/2>VIEW_W||p.y-BUILD_H*scale>VIEW_H||p.y+h<0) continue;
+        var cellCars=cars[key]||[], cellPeds=(peds&&peds[key])||[];
+        var isBuilding=!!TALL_TYPES[cell.type];
+        if(pass===0){
+          if(y===HIGHWAY_Y||y===SIZE-1||x===HIGHWAY_Y||x===SIZE-1){ drawHighway(ctx,p,w,h,x===HIGHWAY_Y||x===SIZE-1); continue; }
+          if(SPR.ground) ctx.drawImage(SPR.ground,p.x-w/2,p.y-h,w,w);
+          else diamond(ctx,p.x,p.y,w/2,h/2,COLORS.ground);
+          if(overlayIdx>0){   // 可视化叠加层：贴地半透明色块（优化 #3）
+            var oc2=overlayColor(city,cell,x,y);
+            if(oc2)diamond(ctx,p.x,p.y,w/2*0.94,h/2*0.94,oc2);
+          }
+          if(cell.type==='empty'||isBuilding) continue;
+          if(cell.type==='parking'){ drawParking(ctx,p,w,h,tr&&tr.lots[key],scale); continue; }
+          var sk2=spriteKey(cell,city,x,y);
+          if(SPR.shadow&&!settings.lowQuality) ctx.drawImage(SPR.shadow,p.x-w/2,p.y-h,w,w);
+          else diamond(ctx,p.x+w*0.05,p.y+h*0.12,w/2,h/2,'rgba(8,14,10,0.32)');
+          if(SPR[sk2]) ctx.drawImage(SPR[sk2],p.x-w/2,p.y-h,w,w);
+          else drawSprite(ctx,sk2,p.x,p.y,w,h,scale);
+          // 分隔线按实际连接方向动态绘制，覆盖贴图（含拐角/T/环路）
+          if(cell.type==='road')drawRoadLines(ctx,city,x,y,p,w,h);
+          if(BUILDABLE.indexOf(cell.type)>=0&&!cell.connected)diamond(ctx,p.x,p.y,w/2,h/2,'rgba(10,16,12,0.52)');
+          continue;
+        }
+        if(isBuilding){
+          var g=buildingGeometry(p.x,p.y,w,scale,cell.type,cell.level), sk=spriteKey(cell,city,x,y);
+          buildingShadow(ctx,g,h);
+          if(SPR[sk]){
+            var sr=spriteRect(p.x,p.y,w,scale,cell.type,cell.level);
+            ctx.drawImage(SPR[sk],sr.x,sr.y,sr.w,sr.h);
+          }else{
+            drawBuilding(ctx,g,COLORS[sk]||'#FFF');
+          }
+          if(!cell.connected)buildingOverlay(ctx,g);
+        }
+        cellCars.forEach(function(car){drawCar(ctx,p.x,p.y,scale,car);});
+        cellPeds.forEach(function(ped){drawPed(ctx,p.x,p.y,scale,ped);});
+        if(hoverIdx===key){ctx.save();
+          // 建造预览：半透明色块随可否建造变色（2D 降级路径与 3D 保持一致）
+          var tc=hoverTint2D;
+          ctx.fillStyle='rgba('+Math.round(tc[0]*255)+','+Math.round(tc[1]*255)+','+Math.round(tc[2]*255)+',.45)';
+          ctx.beginPath();ctx.moveTo(p.x,p.y-h/2);ctx.lineTo(p.x+w/2,p.y);ctx.lineTo(p.x,p.y+h/2);ctx.lineTo(p.x-w/2,p.y);ctx.closePath();ctx.fill();
+          ctx.strokeStyle='#FFF';ctx.lineWidth=Math.max(1,0.8*scale);
+          ctx.beginPath();ctx.moveTo(p.x,p.y-h/2);ctx.lineTo(p.x+w/2,p.y);ctx.lineTo(p.x,p.y+h/2);ctx.lineTo(p.x-w/2,p.y);ctx.closePath();ctx.stroke();
+          ctx.restore();}
+      }
+    }
+    }
+    // 昼夜遮罩：全图绘制完成后叠加
+    drawNight(ctx,effectiveDaylightPreview());
+  }
+
+  // ============ 视图与交互 ============
+  var city=createCity(), tr=createTraffic(), gameClock=createClock(), gamePeds=createPeds();
+  var current='road', drawing=false, last=-1, hoverIdx=-1, bankruptShown=false;
+  var canvas=document.getElementById('mapCanvas');
+  // 渲染模式：优先 WebGL 3D（城市天际线式自由视角）；不可用时降级 2D 等距（render2D）。
+  // #flat=1 可强制走 2D 降级（排查渲染差异用）
+  var R3=null, ctx=null;
+  var forceFlat=/(^|[#&?])flat=1/.test(location.search+location.hash);
+  try {
+    var glCtx = forceFlat ? null : (canvas.getContext('webgl') || canvas.getContext('experimental-webgl'));
+    if (glCtx && window.Render3D) {
+      R3 = window.Render3D.createRenderer({
+        size: SIZE, gl: glCtx, canvas: canvas,
+        dpr: window.devicePixelRatio||1,
+        makeCanvas: function(w,h){ var c=document.createElement('canvas'); c.width=w; c.height=h; return c; }
+      });
+    }
+  } catch (e3d) { R3 = null; }
+  if (R3) window.R3 = R3;   // 调试/自动化测试钩子：读取相机与投影
+  Object.defineProperty(window, '__city', { get: function () { return city; } });   // 调试/自动化测试钩子：读取城市状态（clearCity/loadDemo 重建后仍指向新对象）
+  window.__tool = function () { return { current: current, currentLevel: currentLevel }; };   // 调试/自动化测试钩子：读取当前工具与密度
+  window.__dbg = { place:place, canPlace:canPlace, updateConnectivity:updateConnectivity, makeCell:makeCell, serialize:serialize, deserialize:deserialize, settle:settle, closeBankruptBox:closeBankruptBox,
+    pickAt:function(cx,cy){ return toGridEvent(cx,cy); },          // 拾取探针：CSS 客户端坐标 → 格
+    rect:function(){ var r=canvas.getBoundingClientRect(); return {l:r.left,t:r.top,w:r.width,h:r.height}; },
+    view:function(){ return {w:VIEW_W,h:VIEW_H}; } };   // 调试/自动化测试钩子：端到端回归用（只读+受控操作，不暴露内部状态）
+  if (!R3) ctx = canvas.getContext('2d');
+
+  // ============ 开局面（2026-11-23 用户要求）============
+  // 进游戏前先看到一座实时渲染的繁华示例城做背景（菜单浮层，不跳页）。
+  // 有限资金 = 初始 15000（原玩法）；无限资金 = 资金恒定 INFINITE_MONEY，随便花。
+  var started = false, infiniteMoney = false;
+  var INFINITE_MONEY = 9999999;
+  function showMenu(on) {
+    var m = byId('startMenu'); if (m) m.classList.toggle('hide', !on);
+    var pl = document.querySelector('.phone-land'); if (pl) pl.classList.toggle('menu-open', !!on);
+    if (!on) closeSettings();
+    if (on) {
+      // 开局面：顺手清掉上一局残留的悬停方块与提示条
+      var tip = byId('hoverTip'); if (tip) tip.classList.remove('show');
+      if (hoverIdx !== -1) { hoverIdx = -1; render(ctx, city, tr, -1, pedMapCache); }
+    }
+  }
+  function isSettingsOpen(){ var b=byId('settingsBox'); return !!(b&&b.classList.contains('show')); }
+  function openSettings() {
+    renderSettingsBody();
+    var body=byId('settingsBody'); if(body)body.scrollTop=0;   // 每次打开从「画面」组看起
+    var b = byId('settingsBox'), k = byId('settingsMask');
+    if (b) b.classList.add('show'); if (k) k.classList.add('show');
+    cancelHover();
+  }
+  function closeSettings() {
+    var b = byId('settingsBox'), k = byId('settingsMask');
+    if (b) b.classList.remove('show'); if (k) k.classList.remove('show');
+  }
+  // —— 轻量音效：WebAudio 短提示音 + 低音量氛围音，不加载外部音频文件 ——
+  var audioCtx=null, ambientNodes=null;
+  function ensureAudio(){
+    try{
+      if(!audioCtx){ var AC=window.AudioContext||window.webkitAudioContext; if(!AC)return null; audioCtx=new AC(); }
+      if(audioCtx.state==='suspended')audioCtx.resume();
+      return audioCtx;
+    }catch(e){ return null; }
+  }
+  var lastSfxAt=0;
+  function sfxBeep(){
+    if(!settings.uiSound)return;
+    var now=Date.now(); if(now-lastSfxAt<80)return; lastSfxAt=now;
+    var ac=ensureAudio(); if(!ac)return;
+    try{
+      var o=ac.createOscillator(), g=ac.createGain();
+      o.type='sine'; o.frequency.setValueAtTime(660,ac.currentTime);
+      o.frequency.exponentialRampToValueAtTime(880,ac.currentTime+0.05);
+      g.gain.setValueAtTime(0.035,ac.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.0001,ac.currentTime+0.08);
+      o.connect(g); g.connect(ac.destination); o.start(); o.stop(ac.currentTime+0.09);
+    }catch(e){}
+  }
+  function setAmbientAudio(on){
+    try{
+      if(on){
+        if(ambientNodes)return;
+        var ac=ensureAudio(); if(!ac)return;
+        var o=ac.createOscillator(), g=ac.createGain(), lfo=ac.createOscillator(), lg=ac.createGain();
+        o.type='sine'; o.frequency.value=110;
+        g.gain.value=0.012;
+        lfo.type='sine'; lfo.frequency.value=0.16; lg.gain.value=0.006;
+        lfo.connect(lg); lg.connect(g.gain);
+        o.connect(g); g.connect(ac.destination); o.start(); lfo.start();
+        ambientNodes={o:o,g:g,lfo:lfo};
+      }else if(ambientNodes){
+        try{ambientNodes.o.stop();ambientNodes.lfo.stop();}catch(e){}
+        ambientNodes=null;
+      }
+    }catch(e){}
+  }
+  // 设置变更统一入口：全部只改视图/交互，不碰 sim / traffic 规则与默认数值。
+  function applySettings(){
+    var hint=document.querySelector('.game-hint');
+    if(hint)hint.classList.toggle('hint-hidden',!settings.showHints);
+    if(R3&&R3.setQuality)R3.setQuality(settings.lowQuality);
+    applyRenderScale();
+    setAmbientAudio(settings.ambientSound);
+    saveSettings();
+    renderSettingsBody();
+    syncHUD();
+    render(ctx,city,tr,hoverIdx,pedMapCache);
+  }
+  function fmtSettingValue(row){
+    var v=settings[row.key];
+    if(row.type==='range'){
+      var n=row.step<1?Number(v).toFixed(1):String(Math.round(v));
+      return n+(row.unit||'');
+    }
+    return String(v);
+  }
+  function renderSettingsBody(){
+    var body=byId('settingsBody'); if(!body)return;
+    var keepScroll=body.scrollTop;   // 改一个开关会整体重绘：保留滚动位置，别把正在看的项弹走
+    body.innerHTML=SETTINGS_GROUPS.map(function(g){
+      return '<div class="set-group"><div class="set-group-title">'+g.title+'</div>'+g.rows.map(function(row){
+        var ctrl='';
+        if(row.type==='switch')ctrl='<div class="set-switch'+(settings[row.key]?' on':'')+'" data-key="'+row.key+'" role="switch" aria-checked="'+!!settings[row.key]+'"></div>';
+        else if(row.type==='segment')ctrl='<div class="set-seg">'+row.options.map(function(o){
+          return '<button type="button" data-key="'+row.key+'" data-val="'+String(o.v)+'" class="'+(settings[row.key]===o.v?'active':'')+'">'+o.n+'</button>';
+        }).join('')+'</div>';
+        else ctrl='<div class="set-range"><input type="range" data-key="'+row.key+'" min="'+row.min+'" max="'+row.max+'" step="'+row.step+'" value="'+settings[row.key]+'"><b data-val-for="'+row.key+'">'+fmtSettingValue(row)+'</b></div>';
+        return '<div class="set-row"><div class="set-row-main"><span class="set-row-name">'+row.name+'</span>'+
+          (row.hint?'<span class="set-row-hint">'+row.hint+'</span>':'')+'</div>'+ctrl+'</div>';
+      }).join('')+'</div>';
+    }).join('');
+    Array.prototype.forEach.call(body.querySelectorAll('.set-switch'),function(el){
+      el.onclick=function(){ settings[el.getAttribute('data-key')]=!settings[el.getAttribute('data-key')]; sfxBeep(); applySettings(); };
+    });
+    Array.prototype.forEach.call(body.querySelectorAll('.set-seg button'),function(el){
+      el.onclick=function(){
+        var key=el.getAttribute('data-key'), raw=el.getAttribute('data-val');
+        var row=null; SETTINGS_GROUPS.forEach(function(g){g.rows.forEach(function(r){if(r.key===key)row=r;});});
+        var o=row&&row.options.filter(function(x){return String(x.v)===raw;})[0];
+        settings[key]=o?o.v:settings[key]; sfxBeep(); applySettings();
+      };
+    });
+    Array.prototype.forEach.call(body.querySelectorAll('.set-range input'),function(el){
+      el.oninput=function(){
+        var key=el.getAttribute('data-key'), row=null;
+        SETTINGS_GROUPS.forEach(function(g){g.rows.forEach(function(r){if(r.key===key)row=r;});});
+        settings[key]=Number(el.value);
+        var b=body.querySelector('[data-val-for="'+key+'"]'); if(b&&row)b.textContent=fmtSettingValue(row);
+      };
+      el.onchange=function(){ saveSettings(); render(ctx,city,tr,hoverIdx,pedMapCache); };
+    });
+    var reset=byId('settingsReset');
+    if(reset)reset.onclick=function(){
+      settings=normalizeSettings(null); sfxBeep(); applySettings();
+      toast('设置已恢复默认');
+    };
+    body.scrollTop=keepScroll;
+  }
+  window.__dbg.settings=function(){ return JSON.parse(JSON.stringify(settings)); };
+  window.__dbg.setSetting=function(k,v){
+    if(!(k in settings))return false;
+    settings=normalizeSettings(Object.assign({},settings,((o)=>{o[k]=v;return o;})({})));
+    applySettings(); return true;
+  };
+  // 繁华示例城（开局面背景，固定种子：每次进入观感一致）。不改 sim 规则，只是批量 place。
+  // 建造期间给临时巨额资金：1044 格路会花光初始 15000 并触发破产锁（canPlace 拒绝），
+  // 建完恢复 15000 —— 玩家看到的仍是一座「待开发」的新城资金。
+  function buildShowcaseCity() {
+    var c = createCity();
+    c.money = 999999999;
+    var seed = 20261123;
+    function rnd() { seed = (seed * 1103515245 + 12345) % 2147483648; return seed / 2147483648; }
+    // 路网：贴高速的内圈横路（连通种子）+ 横 y=2..46 步进 4 / 竖 x=3..47 步进 4
+    var ys = [], xs = [];
+    for (var y = 2; y <= 46; y += 4) ys.push(y);
+    for (var x = 3; x <= 47; x += 4) xs.push(x);
+    for (var xr = 1; xr < 49; xr++) place(c, xr, 1, 'road');
+    ys.forEach(function (y) { for (var x = 1; x < 49; x++) place(c, x, y, 'road'); });
+    xs.forEach(function (x) { for (var y = 2; y < 49; y++) place(c, x, y, 'road'); });
+    // 街区填建筑：北边（靠高速）商业/办公/工业为主，往南住宅越多；约 18% 留空当空地
+    for (var by2 = 2; by2 <= 48; by2++) {
+      for (var bx = 1; bx <= 48; bx++) {
+        if (c.cells[idx(bx, by2)].type !== 'empty') continue;
+        if (rnd() < 0.18) continue;
+        var t, lv, p = rnd();
+        if (by2 <= 12) { t = p < 0.42 ? 'com' : (p < 0.72 ? 'off' : 'ind'); lv = 1 + Math.floor(rnd() * 3); }
+        else if (by2 <= 26) { t = p < 0.5 ? 'com' : (p < 0.8 ? 'res' : 'ind'); lv = 1 + Math.floor(rnd() * 3); }
+        else { t = p < 0.85 ? 'res' : 'com'; lv = rnd() < 0.6 ? 1 : 2; }
+        place(c, bx, by2, t, lv);
+      }
+    }
+    // 服务建筑定点（都紧邻路网），保证示例城功能齐全、天际线有识别点
+    place(c, 6, 3, 'utility'); place(c, 10, 3, 'police'); place(c, 14, 3, 'fire'); place(c, 18, 3, 'clinic');
+    place(c, 22, 3, 'edu1'); place(c, 26, 3, 'edu2'); place(c, 30, 3, 'edu3'); place(c, 34, 3, 'waste');
+    place(c, 12, 15, 'clinic'); place(c, 24, 15, 'edu2'); place(c, 36, 15, 'police');
+    place(c, 8, 27, 'edu1'); place(c, 20, 27, 'fire'); place(c, 32, 27, 'utility');
+    place(c, 44, 19, 'parking'); place(c, 16, 23, 'parking');
+    place(c, 5, 11, 'park'); place(c, 15, 19, 'park'); place(c, 27, 31, 'park'); place(c, 39, 23, 'park');
+    updateConnectivity(c);
+    c.money = INITIAL_MONEY;   // 恢复初始资金
+    return c;
+  }
+  function startGame(infinite) {
+    started = true; infiniteMoney = !!infinite;
+    clearCity();   // 重建全新城市/车辆/行人/时钟（一次性游玩：每次开局都从零开始）
+    if (infiniteMoney) city.money = INFINITE_MONEY;
+    // 相机完整复位（含 yaw/pitch）：开局面电影镜头不能带进游戏
+    if (R3) { R3.setCamera({ yaw: Math.PI * 0.25, pitch: 0.74, dist: 78 / CAMERA_ZOOM }); R3.setTarget(Math.floor(SIZE / 2), 8); }
+    else { setZoom(CAMERA_ZOOM); setCenterGrid(Math.floor(SIZE / 2), 8); }
+    showMenu(false); syncHUD(); render(ctx, city, tr, -1, pedMapCache);
+  }
+  window.__dbg.start = function (i) { startGame(i); };    // 端到端/调试钩子：跳过菜单直接开局
+  window.__dbg.menu = function (on) { showMenu(on); };    // 端到端/调试钩子：显示/隐藏开局面
+  window.__dbg.started = function () { return started; };
+  // 菜单按钮（本脚本在 body 末尾执行，DOM 已就绪）
+  byId('btnStartFinite').addEventListener('click', function () { startGame(false); });
+  byId('btnStartInfinite').addEventListener('click', function () { startGame(true); });
+  byId('btnSettings').addEventListener('click', openSettings);
+  byId('settingsClose').addEventListener('click', closeSettings);
+  byId('settingsMask').addEventListener('click', closeSettings);
+  function applyRenderScale(){
+    // 低画质：0.75 倍后备缓冲（CSS 尺寸不变，拾取仍按 CSS 坐标），老手机掉帧救星
+    var dpr=(window.devicePixelRatio||1)*(settings.lowQuality?0.75:1);
+    canvas.width=Math.round(VIEW_W*dpr); canvas.height=Math.round(VIEW_H*dpr);
+    if (ctx) ctx.setTransform(dpr,0,0,dpr,0,0);
+  }
+  function setupCanvas(){
+    applyRenderScale();
+    layout();
+    // 默认放大 3 倍并对到高速附近（滚轮缩放 / Shift+拖动平移 / 双指缩放）
+    setZoom(CAMERA_ZOOM);
+    setCenterGrid(Math.floor(SIZE/2), 8);
+    render(ctx,city,tr,hoverIdx,pedMapCache);
+  }
+  function byId(id){ return document.getElementById(id); }
+  function groupNumber(n){
+    var s=Math.abs(Math.round(n)).toString(), out='';
+    for (var i=0;i<s.length;i++) { if (settings.thousands&&i>0&&(s.length-i)%3===0) out+=','; out+=s[i]; }
+    return out;
+  }
+  function moneyText(v) {
+    var n=Math.round(v);
+    return (n<0?'-¥ ':'¥ ')+groupNumber(n);
+  }
+  // ============ 游戏时钟 / 昼夜 / 每秒收益（与 utils/clock.js 一致） ============
+  var DAY_SECONDS=300, SETTLE_SECONDS=2, START_HOUR=8;
+  function createClock(){return {elapsed:0,incomePerSec:0,lastDelta:0};}
+  function clockInfo(ck){
+    var e=ck?ck.elapsed:0;
+    var total=(e/DAY_SECONDS)*24*60+START_HOUR*60;
+    var day=Math.floor(total/(24*60))+1, mod=Math.floor(total%(24*60));
+    var h=Math.floor(mod/60), m=mod%60, hf=h+m/60;
+    return {day:day,hour:h,minute:m,hourFloat:hf,isNight:hf<6||hf>=18};
+  }
+  function daylight(ck){
+    var t=clockInfo(ck).hourFloat;
+    if(t>=6&&t<=18)return 0.35+0.65*Math.sin(((t-6)/12)*Math.PI);
+    return 0.18;
+  }
+  function clockText(ck){
+    var i=clockInfo(ck),hh=i.hour<10?'0'+i.hour:''+i.hour,mm=i.minute<10?'0'+i.minute:''+i.minute;
+    return '第'+i.day+'天 '+hh+':'+mm;
+  }
+  function incomeText(ck){
+    var v=ck?ck.incomePerSec:0, sign=v>0?'+':(v<0?'-':''), n=Math.abs(v);
+    var num=n>=10?Math.round(n):Math.round(n*10)/10;
+    return sign+num+'/秒';
+  }
+  function recordSettle(ck,delta){ck.lastDelta=delta;ck.incomePerSec=delta/SETTLE_SECONDS;}
+
+  // ============ 行人（与 utils/pedestrians.js 一致：小黑点 / 有车显示 P） ============
+  var PED_MAX=30, PED_DIRS=[[0,-1],[0,1],[-1,0],[1,0]], PED_STEP=0.045;
+  function walkable(city,x,y){
+    if(x<0||y<0||x>=SIZE||y>=SIZE)return false;
+    if(y===HIGHWAY_Y||y===SIZE-1||x===HIGHWAY_Y||x===SIZE-1)return false;   // 四边高速不走人
+    return city.cells[idx(x,y)].type==='road';
+  }
+  function createPeds(){return {peds:[],nextId:1,tick:0};}
+  function pedsTick(city,ps,tr){
+    if(!ps||!city)return;
+    ps.tick++;
+    var roads=[];
+    for(var i=0;i<city.cells.length;i++){
+      var px0=i%SIZE, py0=Math.floor(i/SIZE);
+      if(px0===0||py0===0||px0===SIZE-1||py0===SIZE-1)continue;   // 跳过四条高速边
+      if(city.cells[i].type==='road'&&city.cells[i].connected)roads.push(i);
+    }
+    var homeCars={};
+    (tr&&tr.cars||[]).forEach(function(c){homeCars[c.home]=c.id;});
+    var target=roads.length?Math.max(2,Math.floor((city.population||0)/6)):0;
+    target=Math.max(0,Math.min(PED_MAX,target));
+    while(ps.peds.length<target&&roads.length){
+      var ri=roads[Math.floor(Math.random()*roads.length)], rx=ri%SIZE, ry=Math.floor(ri/SIZE);
+      var opts=[];
+      for(var d=0;d<4;d++)if(walkable(city,rx+PED_DIRS[d][0],ry+PED_DIRS[d][1]))opts.push(d);
+      if(!opts.length)break;
+      var hasCar=false;
+      [[rx,ry-1],[rx,ry+1],[rx-1,ry],[rx+1,ry]].forEach(function(p){
+        if(p[0]<0||p[1]<0||p[0]>=SIZE||p[1]>=SIZE)return;
+        if(homeCars[idx(p[0],p[1])]!==undefined)hasCar=true;
+      });
+      ps.peds.push({id:ps.nextId++,x:rx,y:ry,dirIdx:opts[Math.floor(Math.random()*opts.length)],
+        speed:PED_STEP*(0.8+Math.random()*0.5),hasCar:hasCar});
+    }
+    if(ps.peds.length>target)ps.peds.length=target;
+    ps.peds.forEach(function(p){
+      p.x+=PED_DIRS[p.dirIdx][0]*p.speed; p.y+=PED_DIRS[p.dirIdx][1]*p.speed;
+      var cx=Math.round(p.x),cy=Math.round(p.y);
+      if(!walkable(city,cx,cy)){
+        p.x=Math.max(0,Math.min(SIZE-1,cx));p.y=Math.max(0,Math.min(SIZE-1,cy));
+        var o=[];for(var d=0;d<4;d++)if(walkable(city,cx+PED_DIRS[d][0],cy+PED_DIRS[d][1]))o.push(d);
+        if(o.length)p.dirIdx=o[Math.floor(Math.random()*o.length)];else{p.x=cx;p.y=cy;}
+      }
+    });
+    // 滞留清理（2026-11-23 bug 修复 #11，与 utils/pedestrians.js 一致）：
+    // 道路被拆后，站在非道路格上的行人立刻移除，不再卡在原地
+    for(var n2=ps.peds.length-1;n2>=0;n2--){
+      var q=ps.peds[n2];
+      if(!walkable(city,Math.round(q.x),Math.round(q.y)))ps.peds.splice(n2,1);
+    }
+  }
+  function pedsByCell(ps){
+    var map={};if(!ps||!ps.peds)return map;
+    ps.peds.forEach(function(p){
+      if(p.x<0||p.y<0||p.x>=SIZE||p.y>=SIZE)return;
+      var k=Math.floor(p.y)*SIZE+Math.floor(p.x);(map[k]=map[k]||[]).push(p);
+    });return map;
+  }
+  // 审计 #20：车辆/行人按格汇总只在数据变化时刷新缓存，render 直接读，不在每帧重建。
+  // 刷新点：120ms 交通/行人步进、syncCars 之后（建造/拆除/停车场）、clearCity、loadDemo。
+  var carMapCache={}, pedMapCache={};
+  function refreshActorMaps(){ carMapCache=carsByCell(tr); pedMapCache=pedsByCell(gamePeds); }
+  function drawPed(ctx,sx,sy,sc,ped){
+    var r=Math.max(2,3.2*sc);
+    ctx.save();
+    ctx.fillStyle='rgba(0,0,0,0.30)';ctx.beginPath();ctx.ellipse(sx+1,sy+r,r*0.9,r*0.5,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#12161C';ctx.beginPath();ctx.arc(sx,sy,r,0,Math.PI*2);ctx.fill();
+    if(ped.hasCar){ctx.fillStyle='rgba(255,255,255,0.95)';ctx.font='bold '+Math.max(6,Math.round(8*sc))+'px sans-serif';ctx.textAlign='center';ctx.fillText('P',sx,sy-r-1);}
+    ctx.restore();
+  }
+  function drawNight(ctx,light){
+    if(light===undefined||light===null||light>=1)return;
+    var a=(1-Math.max(0,Math.min(1,light)))*0.5;
+    ctx.save();ctx.fillStyle='rgba(18,28,64,'+a.toFixed(3)+')';ctx.fillRect(0,0,VIEW_W,VIEW_H);ctx.restore();
+  }
+
+  // 幸福直接显示内部满意度 0~100（2026-11-20 审计 #14 方案 A），
+  // 与悬停详情面板、侧边说明同一套单位，不再做 0~999 曲线换算。
+
+  function syncHUD(){
+    byId('money').textContent=infiniteMoney?'∞':moneyText(city.money);
+    // 资金三档预警：低于 2000 琥珀 / 负债红 / 破产红线深红（无限资金忽略）
+    var moneyTone=infiniteMoney?'':(city.money<=BANKRUPT_LIMIT?' money-critical':(city.money<0?' money-danger':(city.money<2000?' money-warn':'')));
+    byId('money').className='stat-value'+moneyTone;
+    // 还清债务后复位破产弹窗状态（2026-11-23 bug 修复 #1）：再次破产时能重新提示
+    if (city.money>=BANKRUPT_LIMIT) bankruptShown=false;
+    var inc=byId('income');inc.textContent=incomeText(gameClock);
+    inc.className='income '+(gameClock.incomePerSec>=0?'up':'down');
+    var ci=clockInfo(gameClock);
+    byId('gameTime').textContent=clockText(gameClock);
+    byId('dayIcon').textContent=ci.isNight?'🌙':'☀';
+    byId('clockBox').className='clock'+(ci.isNight?' night':'');
+    byId('people').textContent=groupNumber(city.population);
+    var hv=Math.round(city.happiness);
+    byId('happy').textContent=hv;   // 幸福 0~100，与详情面板同一套单位
+    var hr=happinessRank(hv);
+    byId('happyRank').textContent=hr.text;
+    byId('happyRank').className='stat-rank '+hr.cls;
+    var lv={R:Math.round(city.demand.R),C:Math.round(city.demand.C),I:Math.round(city.demand.I),O:Math.round(city.demand.O)};
+    byId('valR').textContent=lv.R;
+    byId('valC').textContent=lv.C;
+    byId('valI').textContent=lv.I;
+    byId('valO').textContent=lv.O;
+    byId('barR').style.width=city.demand.R+'%';
+    byId('barC').style.width=city.demand.C+'%';
+    byId('barI').style.width=city.demand.I+'%';
+    byId('barO').style.width=city.demand.O+'%';
+    byId('cars').textContent=tr.cars.length;
+    byId('jam').textContent=tr.jamCount>0?('堵 '+tr.jamCount):'';
+    if (typeof paintPriceTones==='function') paintPriceTones();   // 资金变化 → 价格配色（白/橙/红）
+  }
+  function toast(msg){
+    var t=byId('toast');t.textContent=msg;t.classList.add('show');
+    clearTimeout(toast.timer);toast.timer=setTimeout(function(){t.classList.remove('show');},1500);
+  }
+  // 长提示来不及看：鼠标悬停暂停倒计时，移开后再给 700ms（2026-11-25）
+  (function bindToastHover(){
+    var t=byId('toast');if(!t)return;
+    t.addEventListener('mouseenter',function(){ if(toast.timer){clearTimeout(toast.timer);toast.timer=null;} });
+    t.addEventListener('mouseleave',function(){
+      if(!t.classList.contains('show'))return;
+      clearTimeout(toast.timer);
+      toast.timer=setTimeout(function(){t.classList.remove('show');},700);
+    });
+  })();
+  if (window.__dbg) window.__dbg.toast = toast;   // 端到端验证「悬停暂停消失」用
+  var toastAt=0; var lastToastMsg='';
+  // 相同消息 1.2 秒内防抖；不同消息不互斥（审计 #16），避免连续报错被吞
+  function toastOnce(msg){ var now=Date.now();if(msg===lastToastMsg&&now-toastAt<1200)return;lastToastMsg=msg;toastAt=now;toast(msg); }
+  // 地块因子条（2026-11-23 优化 #2）：把服务覆盖 / 教育 / 幸福 / 污染 / 噪音 / 就业做成可视化条，
+  // 玩家一眼看出幸福被什么扣分，不用读文字。只读取已有数据，不改任何规则。
+  var FACTOR_COLOR={good:'#2E9E63', warn:'#E8A33D', bad:'#D9534F', pol:'#E06C3C', noi:'#8B6FD6'};
+  function toneOf(v,warnAt,badAt){
+    // v 越大越好
+    return v>=warnAt?'good':(v>=badAt?'warn':'bad');
+  }
+  function inspectFactors(x,y){
+    var i=idx(x,y), c=city.cells[i];
+    if(ZONES.indexOf(c.type)<0){
+      if(SERVICE[c.type]&&(c.type==='waste'||c.type==='cemetery')){
+        var cap=SERVICE[c.type].capacity, used=Math.min(cap,c.used||0), left=Math.max(0,1-used/cap);
+        return {title:'消耗型服务：剩余容量', list:[
+          {name:'剩余容量', pct:left,
+            color:left>=0.4?FACTOR_COLOR.good:(left>=0.15?FACTOR_COLOR.warn:FACTOR_COLOR.bad),
+            val:Math.round(cap-used)+'/'+cap}
+        ]};
+      }
+      return null;
+    }
+    var list=[];
+    var cov=city.coverage||{};
+    var names={utility:'水电',police:'警务',fire:'消防',clinic:'医疗',edu1:'小学',edu2:'中学',edu3:'大学',waste:'垃圾',cemetery:'殡葬'};
+    var got=0, miss=[];
+    SERVICE_TYPES.forEach(function(t){ if(cov[t]&&cov[t][i]) got++; else miss.push(names[t]); });
+    list.push({name:'服务覆盖', pct:got/SERVICE_TYPES.length,
+      color:FACTOR_COLOR[toneOf(got/SERVICE_TYPES.length,0.999,0.6)], val:got+'/'+SERVICE_TYPES.length+(got? '' : ' 全覆盖缺失')});
+    var edu=0;
+    ['edu1','edu2','edu3'].forEach(function(t){ if(cov[t]&&cov[t][i]) edu++; });
+    list.push({name:'教育', pct:edu/3, color:FACTOR_COLOR[toneOf(edu/3,0.99,0.34)], val:edu+'/3'});
+    var happy=city.happy[c.type]||0;
+    list.push({name:'幸福', pct:happy/100, color:FACTOR_COLOR[toneOf(happy,70,40)], val:Math.round(happy)+'/100'});
+    if(c.type==='res'){
+      var occ=city.population>0?city.employed/city.population:0;
+      list.push({name:'就业', pct:occ, color:FACTOR_COLOR[toneOf(occ,0.95,0.8)], val:Math.round(occ*100)+'%'});
+    }
+    var p=Math.min(1,city.pollution[i]||0), q=Math.min(1,city.noise[i]||0);
+    list.push({name:'污染', pct:p, color:FACTOR_COLOR.pol, val:(p*10).toFixed(1)});
+    list.push({name:'噪音', pct:q, color:FACTOR_COLOR.noi, val:(q*10).toFixed(1)});
+    var head=(c.type==='res'?'居住品质因子':(c.type==='com'?'经营条件因子':(c.type==='ind'?'生产条件因子':'办公条件因子')))
+      +(c.connected?'':'（未连通，全部不生效）');
+    return {title:head, list:list, miss:miss};
+  }
+  function renderFactors(el, res){
+    if(!settings.showFactors||!res||!res.list||!res.list.length){el.style.display='none';el.innerHTML='';return;}
+    el.innerHTML='<div class="fbars-title">'+res.title+'</div>'+res.list.map(function(f){
+      return '<div class="fbar"><span class="fbar-name">'+f.name+'</span>'+
+        '<span class="fbar-track"><span class="fbar-fill" style="width:'+
+        Math.round(clamp(f.pct,0,1)*100)+'%;background:'+f.color+'"></span></span>'+
+        '<span class="fbar-val'+((f.name==='污染'||f.name==='噪音')&&f.pct>0.5?' fbar-val--hot':'')+'">'+f.val+'</span></div>';
+    }).join('');
+    el.style.display='block';
+  }
+  function showInspect(x,y){
+    if(isHighway(x,y)){toast('高速公路：车辆通行，禁止路边停车');return;}
+    var info=city.cells[idx(x,y)].type==='parking'?null:inspect(city,x,y);
+    if(!info){
+      var p=parkingInfo(tr,x,y)||{used:0,capacity:PARK_CAPACITY,free:PARK_CAPACITY,connected:false};
+      info={name:'停车场',levelText:'6 车位',connected:p.connected,
+        output:'已停 '+p.used+' · 空位 '+p.free,cost:'仅住宅车辆与过路车可停放'};
+    }
+    byId('insTitle').textContent=info.name+' · '+info.levelText;
+    byId('insCoord').textContent='('+x+', '+y+')';
+    var conn=byId('insConn');conn.textContent=info.connected?'已连通':'未连通';conn.className=info.connected?'ok':'bad';
+    byId('insOutput').textContent=info.output;
+    byId('insCost').textContent=info.cost;
+    var sRow=byId('insServedRow'), eRow=byId('insEnvRow');
+    if (info.served) { sRow.style.display='flex'; byId('insServed').textContent=info.served; }
+    else sRow.style.display='none';
+    if (info.pollutionText) { eRow.style.display='flex'; byId('insEnv').textContent=info.pollutionText; }
+    else eRow.style.display='none';
+    renderFactors(byId('insBars'), inspectFactors(x,y));   // 因子条（优化 #2）
+    byId('mask').classList.add('show');byId('inspectBox').classList.add('show');
+  }
+  function closeInspect(){byId('mask').classList.remove('show');byId('inspectBox').classList.remove('show');}
+  // 工具栏：主行（查看/道路/三类目/拆除）+ 子工具浮层（点类目展开）
+  // current 沿用上方「视图与交互」段的声明
+  var openCategory='';
+  var currentLevel=1;   // 密度建造等级（分区工具 1~3）
+  // 价格文案配色（2026-11-25）：正常白 / 将透支橙 / 破产红，只改显示、不改价格与 canPlace
+  function priceClass(price){
+    if(infiniteMoney||!price)return '';
+    if(city.money<BANKRUPT_LIMIT)return ' price-bad';
+    return price>city.money?' price-debt':'';
+  }
+  function paintPriceTones(){
+    Array.prototype.forEach.call(document.querySelectorAll('.tool-price[data-price]'),function(el){
+      el.className='tool-price'+priceClass(Number(el.getAttribute('data-price'))||0);
+    });
+  }
+  // 子工具栏两端渐变提示：只在真的还能往那个方向滑时显示
+  function updateSubFades(){
+    var bar=byId('subtools'); if(!bar)return;
+    var show=bar.classList.contains('show');
+    var canL=show&&bar.scrollLeft>2;
+    var canR=show&&bar.scrollLeft+bar.clientWidth<bar.scrollWidth-2;
+    var l=byId('subFadeL'),r=byId('subFadeR');
+    if(l)l.classList.toggle('show',canL);
+    if(r)r.classList.toggle('show',canR);
+  }
+  function renderTools(){
+    byId('tools').innerHTML=TOOLS.map(function(t){
+      var active=(t.tools&&t.key===openCategory)||(!t.tools&&t.key===current);
+      return '<div class="tool'+(active?' active':'')+'" data-key="'+t.key+'">'+
+        '<div class="swatch" style="background:'+t.color+'"></div>'+
+        '<span class="tool-name">'+t.name+'</span>'+
+        (t.price?'<span class="tool-price" data-price="'+t.price+'">'+t.price+'</span>':'')+
+        (t.tools?'<span class="tool-arrow">'+(t.key===openCategory?'▾':'▸')+'</span>':'')+'</div>';
+    }).join('');
+    Array.prototype.forEach.call(document.querySelectorAll('#tools .tool'),function(el){
+      el.onclick=function(){
+        sfxBeep();
+        var key=el.getAttribute('data-key');
+        var cat=null;
+        CATEGORIES.forEach(function(c){if(c.key===key)cat=c;});
+        if (cat) {
+          openCategory=(openCategory===key)?'':key;   // 再点同一个类目收起
+          renderSubtools(cat,openCategory===key);
+          renderTools();
+          return;
+        }
+        current=key; openCategory=''; renderSubtools(null,false);
+        closeInspect(); renderTools();
+      };
+    });
+  }
+  function renderSubtools(cat,show){
+    var bar=byId('subtools');
+    var on=!!(cat&&show);
+    // 展开子工具时藏起提示行：浮层紧贴工具栏，否则提示文字会透在浮层下面显得“隔开”
+    var hint=document.querySelector('.game-hint'); if(hint)hint.classList.toggle('hint-hidden',on||!settings.showHints);
+    if (!on){ bar.classList.remove('show'); bar.innerHTML=''; return; }
+    bar.innerHTML='<span class="subtool-label">'+cat.name+'</span>'+cat.tools.map(function(t){
+      var active=(t.type===current&&t.level===currentLevel);
+      return '<div class="tool'+(active?' active':'')+'" data-key="'+t.key+'" data-type="'+t.type+'" data-level="'+t.level+'">'+
+        '<div class="swatch" style="background:'+t.color+'"></div>'+
+        '<span class="tool-name">'+t.name+'</span>'+
+        (t.level&&ZONES.indexOf(t.type)>=0?'<span class="tool-lv">L'+t.level+'</span>':'')+
+        (t.price?'<span class="tool-price" data-price="'+t.price+'">'+t.price+'</span>':'')+'</div>';
+    }).join('');
+    bar.scrollLeft=0;   // 切换分类时滚动位置归零（2026-11-23 bug 修复 #5），不留上一次的偏移
+    Array.prototype.forEach.call(bar.querySelectorAll('.tool'),function(el){
+      el.onclick=function(){
+        sfxBeep();
+        // 选中子工具后不收起子工具栏（审计 #15）：方便连续多选同类建筑
+        current=el.getAttribute('data-type')||el.getAttribute('data-key');
+        currentLevel=Number(el.getAttribute('data-level'))||1;
+        closeInspect(); renderTools();
+        // 关键：同步刷新子工具自身高亮。以前只重绘主栏，子工具按钮要等再次展开
+        // 类目（renderSubtools 重建 DOM）才亮；只切 class 不重建，滚动位置也不跳。
+        Array.prototype.forEach.call(bar.querySelectorAll('.tool'),function(b){
+          b.classList.toggle('active',
+            b.getAttribute('data-type')===current &&
+            Number(b.getAttribute('data-level'))===currentLevel);
+        });
+      };
+    });
+    bar.classList.add('show');
+    paintPriceTones(); updateSubFades();
+  }
+  byId('subtools').addEventListener('scroll',updateSubFades);
+  window.addEventListener('resize',updateSubFades);
+  function toGridEvent(clientX,clientY){
+    var rect=canvas.getBoundingClientRect();
+    var px=clientX-rect.left, py=clientY-rect.top;
+    if(px<0||py<0||px>=rect.width||py>=rect.height)return null;
+    if (R3) return R3.pick(px,py,rect.width,rect.height);   // 3D：射线与地面求交
+    return toGrid(px*(VIEW_W/rect.width),py*(VIEW_H/rect.height));
+  }
+  function carStateText(s){return {home:'停在自家住宅',lot:'停在停车场',outbound:'驶向停车场',inbound:'返回住宅',jam:'堵车中'}[s]||s;}
+  function hoverInfo(x,y){
+    if(isHighway(x,y))return{title:'高速公路',lines:['车辆通行中，禁止路边停车','相邻道路可直接接入高速']};
+    var cell=city.cells[idx(x,y)];
+    if(cell.type==='parking'){
+      var p=parkingInfo(tr,x,y)||{used:0,capacity:PARK_CAPACITY,free:PARK_CAPACITY,connected:false};
+      return{title:'停车场 · ('+x+', '+y+')',lines:['车位 '+p.used+' / '+p.capacity+'，空位 '+p.free,
+        p.connected?'已接入道路网络':'未接入道路，车辆无法进入','路边不可停车，仅停住宅 / 停车场']};
+    }
+    var info=inspect(city,x,y); if(!info)return null;
+    // 空地本身不是路，「未连通道路」会误导；空地的可建性由上方状态行给出
+    var lines=cell.type==='empty'?[info.output,info.cost]:[info.connected?'已连通道路':'未连通道路',info.output,info.cost];
+    if (info.served) lines.push('服务覆盖：'+info.served);
+    if (info.pollutionText) lines.push(info.pollutionText);
+    if(cell.type==='res'){
+      var car=tr.cars.filter(function(c){return c.home===idx(x,y);})[0];
+      lines.push('自带车辆：'+(car?carStateText(car.state):'无'));
+    }
+    return{title:info.name+' · '+info.levelText,lines:lines};
+  }
+  // 建造辅助（2026-11-23 优化 #1）：悬停即判断「能不能放」，用彩色半透明地块 + 一行状态前置告知，
+  // 不用点下去才发现失败。规则全部复用 canPlace / zoneUnlocked，不改任何数值。
+  var HOVER_TONE={ok:[0.28,0.82,0.46], warn:[1.0,0.78,0.20], bad:[0.92,0.26,0.28],
+    debt:[1.0,0.55,0.22], view:[0.36,0.66,1.0], demolish:[0.95,0.45,0.30]};
+  var hoverTint2D=HOVER_TONE.ok;
+  function nearConnectedRoad(x,y){
+    var ns=[[x,y-1],[x,y+1],[x-1,y],[x+1,y]];
+    for(var i=0;i<ns.length;i++){
+      if(!inBounds(ns[i][0],ns[i][1]))continue;
+      var c=city.cells[idx(ns[i][0],ns[i][1])];
+      if(c.type==='road'&&c.connected)return true;
+    }
+    return false;
+  }
+  function hoverState(x,y){
+    if(!inBounds(x,y))return null;
+    if(current==='inspect')return{tone:'view',text:'点击查看地块详情'};
+    var c=city.cells[idx(x,y)];
+    if(current==='bulldoze'){
+      if(c.type==='empty')return{tone:'bad',text:'空地：没有可拆的东西'};
+      var back=(BUILDABLE.indexOf(c.type)>=0&&c.type!=='park')?Math.round(priceOf(c.type,c.level)*REFUND):0;
+      return{tone:'demolish',text:'拆除 '+TYPE_NAME[c.type]+(back?' · 返还 ¥'+back:' · 道路/公园无返还')};
+    }
+    if(isHighway(x,y))return{tone:'bad',text:'高速公路：不可建造'};
+    if(ZONE_TOOLS.indexOf(current)>=0&&!nearConnectedRoad(x,y))
+      return{tone:'warn',text:'未连通：先铺路接到高速才能放置'};
+    var r=canPlace(city,x,y,current,currentLevel);
+    if(!r.ok){
+      if(r.reason&&r.reason.indexOf('已破产')===0)return{tone:'bad',text:'已破产：只能拆除还债'};
+      return{tone:'bad',text:r.reason||'不可建造'};
+    }
+    var price=priceOf(current,currentLevel);
+    if(city.money<price)
+      return{tone:'debt',text:'资金不足 · 可透支建造（需 ¥'+price+'，现有 ¥'+Math.round(city.money)+'）'};
+    return{tone:'ok',text:'可建造 · ¥'+price+'（余额 ¥'+Math.round(city.money)+'）'};
+  }
+  // 开局面浮层是否可见（菜单期间不响应地块悬停，只留城市做背景）
+  function isMenuOpen(){
+    var m=byId('startMenu'); return !!(m&&!m.classList.contains('hide'));
+  }
+  function updateHover(x,y,clientX,clientY){
+    var p=toGridEvent(clientX,clientY),tip=byId('hoverTip');
+    // 2026-11-24 用户反馈：开局面鼠标划过画布会冒出「地块可建/不可建」方块与提示框，
+    // 菜单期间直接吞掉悬停：清高亮格 + 藏提示条，鼠标移回城再正常显示。
+    if(isMenuOpen()){
+      tip.classList.remove('show');
+      if(hoverIdx!==-1){hoverIdx=-1;render(ctx,city,tr,-1,pedMapCache);}
+      return;
+    }
+    if(!p){hoverIdx=-1;tip.classList.remove('show');render(ctx,city,tr,hoverIdx,pedMapCache);return;}
+    var st=hoverState(p.x,p.y);
+    hoverTint2D=st?(HOVER_TONE[st.tone]||HOVER_TONE.ok):[1,1,1];
+    if(R3)R3.setHoverTint(hoverTint2D);      // 3D：高亮色块随可否建造变色
+    if(p.i!==hoverIdx){hoverIdx=p.i;render(ctx,city,tr,hoverIdx,pedMapCache);}
+    var info=hoverInfo(p.x,p.y);
+    var stEl=byId('hoverState');
+    if(st){
+      stEl.className='hover-state '+st.tone;
+      byId('hoverStateText').textContent=st.text;
+      stEl.style.display='flex';
+    }else stEl.style.display='none';
+    if(info){
+      byId('hoverTitle').textContent=info.title;
+      byId('hoverLines').textContent=info.lines.join('\n');
+      tip.classList.add('show');
+      // 边界检测（审计 #17）：显示后量实际尺寸，不超出窗口右/下边缘
+      var tw=tip.offsetWidth||260, th=tip.offsetHeight||120;
+      tip.style.left=Math.max(0,Math.min(clientX+14,window.innerWidth-tw-8))+'px';
+      tip.style.top=Math.max(0,Math.min(clientY+14,window.innerHeight-th-8))+'px';
+    }else tip.classList.remove('show');
+  }
+  function applyAt(x,y){
+    if(isHighway(x,y)&&current!=='inspect'&&current!=='bulldoze'){toastOnce('高速路面不可建造');return;}
+    if(current==='inspect'){showInspect(x,y);return;}
+    if(ZONE_TOOLS.indexOf(current)>=0 && !zoneUnlocked(x,y)){toastOnce('需先铺路接到高速才能放置');return;}
+    if(current==='parking'){
+      var r=placeParking(city,tr,x,y);
+      if(!r.ok){
+        if(r.reason)toastOnce(r.reason);
+        // 破产弹窗（2026-11-23 bug 修复 #1）：停车场同样受破产锁限制
+        if(r.reason&&r.reason.indexOf('已破产')===0&&!bankruptShown){bankruptShown=true;showBankruptBox();}
+        return;
+      }
+      if(R3)R3.markDirty();     // 3D：标脏，下帧统一重建（拖动连铺时一帧只重建一次）
+      sfxBeep();
+      if(infiniteMoney)city.money=INFINITE_MONEY;   // 无限资金：放置不扣钱
+      syncCars(city,tr,settings.maxCars);refreshActorMaps();syncHUD();requestRender();return;
+    }
+    var res=place(city,x,y,current,currentLevel);
+    if(!res.ok){
+      if(res.reason)toastOnce(res.reason);
+      // 破产弹窗（2026-11-23 bug 修复 #1）：跌破破产阈值锁建造，弹一次说明出路
+      if(res.reason&&res.reason.indexOf('已破产')===0&&!bankruptShown){
+        bankruptShown=true;
+        showBankruptBox();
+      }
+      return;
+    }
+    if(res.changed){
+      // 拆路/铺路后立刻刷新连通（2026-11-23 bug 修复 #4）：connected 即时更新，
+      // 不再等下一次 2 秒结算（拆掉桥接道路后建筑立刻压暗、停止产出）
+      updateConnectivity(city);
+      if(infiniteMoney)city.money=INFINITE_MONEY;   // 无限资金：建造/拆除不动资金
+      if(R3)R3.markDirty();
+      sfxBeep();
+      syncCars(city,tr,settings.maxCars);refreshActorMaps();syncHUD();requestRender();
+    }
+  }
+  // 破产弹窗（预览页原生 DOM 实现，与小程序 wx.showModal 对应）
+  function showBankruptBox(){
+    var box=byId('bankruptBox');
+    if(!box){toastOnce('已破产：只能拆除还债或重置城市');return;}
+    byId('bankruptText').textContent=
+      '资金跌破 '+BANKRUPT_LIMIT+'，建造已锁定。拆除建筑可返还 30% 造价还债，债还清后自动解锁。';
+    box.classList.add('show');
+  }
+  function closeBankruptBox(){var box=byId('bankruptBox');if(box)box.classList.remove('show');}
+  function pointerDown(x,y){var p=toGridEvent(x,y);if(!p)return;drawing=true;last=p.i;applyAt(p.x,p.y);}
+  // 悬停 30ms 防抖：鼠标快速扫地图时不逐像素重算拾取/重绘（2026-11-25）
+  var hoverTimer=null, hoverArgs=null;
+  function scheduleHover(x,y,clientX,clientY){
+    if(!settings.hoverDebounce){ updateHover(x,y,clientX,clientY); return; }
+    hoverArgs=[x,y,clientX,clientY];
+    if(hoverTimer)return;
+    hoverTimer=setTimeout(function(){
+      hoverTimer=null; var a=hoverArgs;
+      if(a)updateHover(a[0],a[1],a[2],a[3]);
+    },30);
+  }
+  function cancelHover(){ if(hoverTimer){clearTimeout(hoverTimer);hoverTimer=null;} hoverArgs=null; }
+  // 叠加层图例跟随鼠标：放大后不会被挡住，始终贴在光标旁（画布内夹紧）
+  function moveOverlayLegend(cx,cy){
+    var lg=byId('overlayLegend');
+    if(!lg||!lg.classList.contains('show'))return;
+    var wrap=document.querySelector('.canvas-wrap'), r=wrap.getBoundingClientRect();
+    lg.style.right='auto';
+    lg.style.left=Math.max(8,Math.min(cx-r.left+16,r.width-lg.offsetWidth-8))+'px';
+    lg.style.top=Math.max(8,Math.min(cy-r.top+16,r.height-lg.offsetHeight-8))+'px';
+  }
+  function pointerMove(x,y){
+    if(isSettingsOpen())return;   // 设置弹窗打开时不响应画布悬停
+    scheduleHover(0,0,x,y);
+    moveOverlayLegend(x,y);
+    if(!drawing||current==='inspect')return;
+    var p=toGridEvent(x,y);if(!p||p.i===last)return;
+    last=p.i;applyAt(p.x,p.y);
+  }
+  function pointerUp(){drawing=false;last=-1;}
+  canvas.addEventListener('mouseleave',function(){
+    cancelHover(); hoverIdx=-1; byId('hoverTip').classList.remove('show');
+    render(ctx,city,tr,-1,pedMapCache);
+  });
+  // —— 相机交互 ——
+  // 滚轮 = 缩放；中键拖动 = 自由旋转视角（城市天际线式：左右环绕 yaw + 上下俯仰 pitch）；
+  // Shift + 拖动 = 平移；双指 = 缩放/平移，双指扭转 = 自由旋转。
+  var panning=false, panLast=null, rotating=false, rotAnchor=null;
+  function afterRotate(){
+    hoverIdx=-1; byId('hoverTip').classList.remove('show');
+    render(ctx,city,tr,-1,pedMapCache);
+  }
+  function localXY(clientX,clientY){
+    var rect=canvas.getBoundingClientRect();
+    return { x:(clientX-rect.left)*(VIEW_W/rect.width), y:(clientY-rect.top)*(VIEW_H/rect.height),
+             rx:clientX-rect.left, ry:clientY-rect.top, w:rect.width, h:rect.height };
+  }
+  canvas.addEventListener('wheel',function(e){
+    e.preventDefault();
+    closeInfoBox();   // 缩放/旋转时关掉悬停信息面板（2026-11-23 bug 修复 #5）
+    if(R3){
+      if(settings.wheelMode==='rotate')R3.orbit(e.deltaY*0.004,0);
+      else R3.zoomBy(e.deltaY<0?1/1.15:1.15);
+      afterRotate(); return;
+    }
+    if(settings.wheelMode==='rotate'){ rotateBy(e.deltaY>0?1:-1); afterRotate(); return; }
+    var p=localXY(e.clientX,e.clientY);
+    setZoom(zoom*(e.deltaY<0?1.15:1/1.15), p.x, p.y);
+    render(ctx,city,tr,hoverIdx,pedMapCache);
+  },{passive:false});
+  canvas.addEventListener('contextmenu',function(e){
+    if(settings.rotateButton==='right')e.preventDefault();   // 右键旋转时不弹浏览器菜单
+  });
+  canvas.addEventListener('mousedown',function(e){
+    var rotateBtn=settings.rotateButton==='right'?2:1;
+    if(e.button===rotateBtn&&!e.shiftKey){          // 按住中键（或右键）拖动 = 自由旋转视角
+      e.preventDefault();
+      closeInfoBox();   // 旋转视角时关掉悬停面板（2026-11-23 bug 修复 #5）
+      rotating=true; rotAnchor={x:e.clientX,y:e.clientY};
+      canvas.style.cursor='move';
+      return;
+    }
+    if(e.shiftKey||e.button===1){
+      e.preventDefault();
+      closeInfoBox();   // 平移视角时关掉悬停面板（2026-11-23 bug 修复 #5）
+      panning=true; var p=localXY(e.clientX,e.clientY); panLast={x:p.x,y:p.y};
+      return;
+    }
+    pointerDown(e.clientX,e.clientY);
+  });
+  window.addEventListener('mousemove',function(e){
+    if(rotating&&rotAnchor){
+      if(R3){   // 3D：任意角度轨道旋转（水平环绕 + 垂直俯仰）
+        R3.orbit(-(e.clientX-rotAnchor.x)*0.008, (e.clientY-rotAnchor.y)*0.008);
+        rotAnchor={x:e.clientX,y:e.clientY};
+        render(ctx,city,tr,hoverIdx,pedMapCache);
+        return;
+      }
+      var rdx=e.clientX-rotAnchor.x;
+      if(Math.abs(rdx)>=70){ rotateBy(rdx>0?1:-1); rotAnchor={x:e.clientX,y:rotAnchor.y}; afterRotate(); }
+      return;
+    }
+    if(panning&&panLast){
+      var p=localXY(e.clientX,e.clientY);
+      if(R3){ R3.panByPixels(p.x-panLast.x,p.y-panLast.y,VIEW_W,VIEW_H); }
+      else panBy(p.x-panLast.x,p.y-panLast.y);
+      panLast={x:p.x,y:p.y};
+      render(ctx,city,tr,hoverIdx,pedMapCache);
+      return;
+    }
+    pointerMove(e.clientX,e.clientY);
+  });
+  window.addEventListener('mouseup',function(){
+    if(rotating){ rotating=false; rotAnchor=null; canvas.style.cursor=''; }
+    panning=false; panLast=null; pointerUp();
+  });
+  // WASD / 方向键 = 平移视野（连续平滑：按住期间 rAF 循环按帧时长移动，不依赖按键自动重复）。
+  // panByPixels 是「抓取拖拽」语义（拖上=视野后移），WASD 是「视野移动」语义 → 符号取反：
+  // W=[0,+1]（前进）、S=[0,-1]、A=[+1,0]（左移）、D=[-1,0]
+  var KEY_SPEED=560;   // 基准屏幕像素/秒（zoom 3 时的手感）
+  var KEY_MAP={ KeyW:[0,1], KeyS:[0,-1], KeyA:[1,0], KeyD:[-1,0],
+                ArrowUp:[0,1], ArrowDown:[0,-1], ArrowLeft:[1,0], ArrowRight:[-1,0] };
+  var keysHeld={}, keyAnim=null, keyLast=0;
+  // 缩放自适应（2026-11-23 bug 修复 #7）：放大后放慢、缩小后加快，
+  // 以默认 3 倍为基准，屏幕速度 × clamp(zoom/3, 0.4, 1.5)。
+  // 3D 的 dist = 78/zoom，所以 zoom = 78/dist。
+  function keySpeedFactor(){
+    var z;
+    if (R3) { var cam=R3.getCamera(); z = 78/Math.max(1,cam.dist); }
+    else z = zoom;
+    return Math.max(0.4, Math.min(1.5, z/CAMERA_ZOOM));
+  }
+  function keyTick(ts){
+    var dx=0, dy=0;
+    for (var code in keysHeld){
+      if (keysHeld[code] && KEY_MAP[code]){ dx+=KEY_MAP[code][0]; dy+=KEY_MAP[code][1]; }
+    }
+    if (dx||dy){
+      var dt=Math.min(0.05,(ts-keyLast)/1000);
+      var norm=Math.sqrt(dx*dx+dy*dy);
+      var spd=KEY_SPEED*keySpeedFactor()*settings.wasdSpeed*dt;
+      if(R3) R3.panByPixels(dx/norm*spd, dy/norm*spd, VIEW_W, VIEW_H);
+      else panBy(dx/norm*spd, dy/norm*spd);
+      hoverIdx=-1; byId('hoverTip').classList.remove('show');
+      closeInfoBox();   // 移动视野时关掉悬停信息面板（2026-11-23 bug 修复 #5），不再错位悬浮
+      render(ctx,city,tr,-1,pedMapCache);
+    }
+    keyLast=ts;
+    if (keyActive()) { keyAnim=requestAnimationFrame(keyTick); }
+    else { keyAnim=null; }   // 没有键按住就停掉循环，别空转烧电
+  }
+  function keyActive(){
+    for (var code in keysHeld) if (keysHeld[code]) return true;
+    return false;
+  }
+  window.addEventListener('keydown',function(e){
+    // L：循环切换可视化叠加层（关 → 连通 → 拥堵 → 环境）
+    if(e.code==='KeyL'&&!e.ctrlKey&&!e.altKey&&!e.metaKey){
+      overlayIdx=(overlayIdx+1)%OVERLAY_MODES.length; applyOverlay(); e.preventDefault(); return;
+    }
+    var v=KEY_MAP[e.code];
+    if(!v||e.ctrlKey||e.altKey||e.metaKey) return;
+    e.preventDefault();   // 方向键别滚动页面
+    if(!keysHeld[e.code]){
+      keysHeld[e.code]=true;
+      if(keyAnim===null){ keyLast=performance.now(); keyAnim=requestAnimationFrame(keyTick); }
+    }
+  });
+  window.addEventListener('keyup',function(e){ if(keysHeld[e.code]) keysHeld[e.code]=false; });
+  window.addEventListener('blur',function(){ keysHeld={}; });
+  // 触屏：单指建造，双指缩放 + 平移 + 扭转自由旋转
+  var touchGesture=null;
+  function touchMid(touches){
+    var a=localXY(touches[0].clientX,touches[0].clientY), b=localXY(touches[1].clientX,touches[1].clientY);
+    var dx=b.x-a.x, dy=b.y-a.y;
+    return { dist:Math.max(1,Math.sqrt(dx*dx+dy*dy)), x:(a.x+b.x)/2, y:(a.y+b.y)/2 };
+  }
+  function touchAngle(touches){
+    var a=localXY(touches[0].clientX,touches[0].clientY), b=localXY(touches[1].clientX,touches[1].clientY);
+    return Math.atan2(b.y-a.y, b.x-a.x);
+  }
+  var twistBase=null;
+  canvas.addEventListener('touchstart',function(e){
+    e.preventDefault();
+    closeInfoBox();   // 触屏操作时关掉悬停信息面板（2026-11-23 bug 修复 #5）
+    if(e.touches.length>=2){ touchGesture=touchMid(e.touches); twistBase=touchAngle(e.touches); return; }
+    twistBase=null;
+    touchGesture=null;
+    pointerDown(e.touches[0].clientX,e.touches[0].clientY);
+  },{passive:false});
+  canvas.addEventListener('touchmove',function(e){
+    e.preventDefault();
+    if(e.touches.length>=2){
+      if(!touchGesture){ touchGesture=touchMid(e.touches); twistBase=touchAngle(e.touches); return; }
+      var now=touchMid(e.touches);
+      // 双指扭转 = 自由旋转（3D 每帧跟随；2D 每 40° 触发一次 90°，避免和平移/缩放抢手势）
+      if(twistBase!==null){
+        var ang=touchAngle(e.touches), d=ang-twistBase;
+        while(d>Math.PI) d-=Math.PI*2;
+        while(d<-Math.PI) d+=Math.PI*2;
+        if(R3){
+          if(Math.abs(d)>0.01){ R3.orbit(-d,0); twistBase=ang; touchGesture=now; render(ctx,city,tr,hoverIdx,pedMapCache); return; }   // 取负：画面跟随手指，与中键拖动同一手感
+        }else if(Math.abs(d)>Math.PI/4.5){
+          rotateBy(d>0?1:-1); twistBase=ang; touchGesture=now; afterRotate(); return;
+        }
+      }
+      if(R3){
+        R3.panByPixels(now.x-touchGesture.x, now.y-touchGesture.y, VIEW_W, VIEW_H);
+        R3.zoomBy(now.dist/touchGesture.dist);
+      }else{
+        panBy(now.x-touchGesture.x, now.y-touchGesture.y);
+        setZoom(zoom*(now.dist/touchGesture.dist), now.x, now.y);
+      }
+      touchGesture=now;
+      render(ctx,city,tr,hoverIdx,pedMapCache);
+      return;
+    }
+    if(touchGesture){ touchGesture=null; last=-1; return; }
+    pointerMove(e.touches[0].clientX,e.touches[0].clientY);
+  },{passive:false});
+  canvas.addEventListener('touchend',function(e){
+    if(!e.touches||e.touches.length<2) twistBase=null;
+    if(!e.touches||e.touches.length===0) touchGesture=null;
+    pointerUp();
+  });
+
+  byId('mask').onclick=closeInspect;
+  // 触屏点 mask 关闭弹窗（2026-11-23 bug 修复 #5）：canvas 的 touchstart preventDefault
+  // 会吞掉后续 click，这里直接在 touchend 关闭，触屏不再失效
+  byId('mask').addEventListener('touchend',function(e){ e.preventDefault(); closeInspect(); },{passive:false});
+  byId('insClose').onclick=closeInspect;
+  byId('bankruptClose').onclick=closeBankruptBox;
+  // —— HUD 信息面板：悬停显示、正下方跟随、移开即关（无点击锁定）——
+  function moneyLines(){
+    var b=city.incomeBreakdown||{res:0,com:0,ind:0,off:0,maint:0};
+    function sign(v){return (v>=0?'+':'')+v;}
+    var lines=['住宅税收：'+sign(b.res)+' / 周期','商业营收：'+sign(b.com)+' / 周期',
+      '工业营收：'+sign(b.ind)+' / 周期','办公营收：'+sign(b.off)+' / 周期',
+      '服务维护：'+b.maint+' / 周期'];
+    (city.incomeNotes||[]).forEach(function(n){lines.push('· '+n);});
+    if (!(city.incomeNotes||[]).length) lines.push('· 各项运转正常，无额外因素拖累收入');
+    return lines;
+  }
+  function popLines(){
+    var unemp=Math.max(0,city.population-city.employed);
+    return ['总人口：'+city.population,
+      '本地出生：'+city.popBorn+'（住宅幸福越高，出生越多）',
+      '外来迁入：'+city.popMigrant+'（有岗位有住房才会迁入）',
+      '就业 '+city.employed+' · 失业 '+unemp];
+  }
+  function demandLines(key){
+    // 审计 #25：第一行显示当前需求等级（密度分级名），与侧边说明对齐
+    // 优化 #2：顶部加彩色进度条 + 34/67 两道密度分界刻度，需求强度一眼可读
+    var v=clamp(city.demand[key]||0,0,100);
+    var tier=v<34?0:(v<67?1:2);
+    var head='当前需求等级：'+demandLabel(key,v);
+    var map={R:city.demandNotes&&city.demandNotes.R,C:city.demandNotes&&city.demandNotes.C,I:city.demandNotes&&city.demandNotes.I,O:city.demandNotes&&city.demandNotes.O};
+    var arr=map[key]||[];
+    // 颜色按强度预警（<34 灰 / 34~67 黄 / 67+ 绿），不再按分区换色，避免误读成强弱
+    var tone=['#A0AAC0','#FFD075','#4FD07E'][tier];
+    var word=['低','中','高'][tier];
+    var barRow={html:'<div class="dbar-wrap"><span class="dbar"><span class="dbar-fill" style="width:'+
+      Math.round(v)+'%;background:'+tone+'"></span>'+
+      '<i style="left:34%"></i><i style="left:67%"></i></span>'+
+      '<b class="dbar-tier tier-'+tier+'">'+word+'</b>'+
+      '<b class="dbar-val">'+Math.round(v)+'</b></div>'};
+    var scaleRow={html:'<div class="dbar-scale"><span>0 低密度</span><span>34 中密度</span><span>67 高密度</span></div>'};
+    return [barRow, scaleRow, head].concat(arr.length?arr.slice(0,2):['暂无数据']);
+  }
+  // 浮层出现在锚元素（金币/人口/某条需求）正下方，透明玻璃材质
+  function showInfoBox(title,lines,anchor){
+    byId('infoTitle').textContent=title;
+    byId('infoLines').innerHTML=lines.map(function(l){
+      if(l&&typeof l==='object'&&l.html)return '<div class="row">'+l.html+'</div>';   // 富行（进度条）
+      return '<div class="row">'+l+'</div>';
+    }).join('');
+    var box=byId('infoBox'), phone=document.querySelector('.phone-land');
+    box.classList.add('show');
+    if(anchor){
+      var a=anchor.getBoundingClientRect();
+      var pr=(box.offsetParent||document.body).getBoundingClientRect();
+      var phr=phone.getBoundingClientRect();
+      var maxLeft=phr.right-pr.left-box.offsetWidth-8;
+      var left=Math.max(phr.left-pr.left+8, Math.min(a.left-pr.left, maxLeft));
+      box.style.left=left+'px';
+      box.style.top=(a.bottom-pr.top+6)+'px';
+    }
+  }
+  function closeInfoBox(){byId('infoBox').classList.remove('show');}
+  function hoverPanel(id,title,linesFn){
+    var el=byId(id);
+    el.addEventListener('mouseenter',function(){showInfoBox(title,linesFn(),el);});
+    el.addEventListener('mouseleave',closeInfoBox);
+  }
+  hoverPanel('moneyStat','金币明细（每 2 秒结算一次）',moneyLines);
+  hoverPanel('peopleStat','人口明细',popLines);
+  hoverPanel('rciR','住宅需求 — 缺什么',function(){return demandLines('R');});
+  hoverPanel('rciC','商业需求 — 缺什么',function(){return demandLines('C');});
+  hoverPanel('rciI','工业需求 — 缺什么',function(){return demandLines('I');});
+  hoverPanel('rciO','办公需求 — 缺什么',function(){return demandLines('O');});
+  // 一次性游玩：游戏内不提供存/读/清按钮（sim 的 serialize/deserialize 逻辑保留不动）
+  // 审计 #22：clearCity/loadDemo 都强制重建 city/tr/gamePeds 全套对象，不残留旧引用
+  function clearCity(){city=createCity();tr=createTraffic();gameClock=createClock();gamePeds=createPeds();if(R3)R3.rebuild(city);refreshActorMaps();closeInspect();syncHUD();render(ctx,city,tr,-1,pedMapCache);}
+
+  function loadDemo(){
+    // 审计 #22：整套对象重建（city/tr/gameClock/gamePeds），不残留旧车辆引用
+    city=createCity();tr=createTraffic();gameClock=createClock();gamePeds=createPeds();
+    city.money=1000000;   // 演示建造资金（建完恢复演示值）
+    // 高速 y=0；y=1 主路接高速；四条竖路 + 多条横支路构成街区（纵深到 y=18）
+    for(var x=4;x<=42;x++)place(city,x,1,'road');
+    [8,18,28,36].forEach(function(x){for(var y=2;y<=18;y++)place(city,x,y,'road');});
+    [3,6,9,12,15].forEach(function(y){
+      for(var x2=9;x2<=17;x2++)place(city,x2,y,'road');
+    });
+    [3,12].forEach(function(y){
+      for(var x3=19;x3<=27;x3++)place(city,x3,y,'road');
+      for(var x4=29;x4<=35;x4++)place(city,x4,y,'road');
+    });
+    // 组团一：住宅 + 服务配套（水电/警务/消防/医疗/小学/中学/公园/墓地）
+    [2,4,7,10,13,16].forEach(function(y,idx){
+      var from=[9,9,10,11,9,10][idx], to=[16,13,14,15,15,16][idx];
+      for(var x=from;x<=to;x++)place(city,x,y,'res');
+    });
+    place(city,9,5,'utility');   // 北邻 y=6 支路
+    place(city,12,7,'police');   // 北邻 y=6 支路
+    place(city,15,7,'fire');
+    place(city,9,7,'clinic');
+    place(city,12,5,'edu1');
+    place(city,15,5,'edu2');
+    place(city,13,8,'park');
+    place(city,10,8,'cemetery'); // 南邻 y=9 支路
+    // 组团二：商业街 + 住宅 + 停车场
+    for(var x9=19;x9<=27;x9++)place(city,x9,2,'com');
+    for(var xa=19;xa<=24;xa++)place(city,xa,13,'com');
+    for(var xb=19;xb<=23;xb++)place(city,xb,4,'res');
+    for(var xc=19;xc<=22;xc++)place(city,xc,10,'res');
+    placeParking(city,tr,26,4);  // 北邻 y=3 支路：6 车位抢位会堵车
+    // 组团三：工业 + 办公楼 + 大学 + 垃圾场
+    for(var xd=29;xd<=34;xd++)place(city,xd,2,'ind');
+    for(var xe=29;xe<=33;xe++)place(city,xe,13,'ind');
+    for(var xf=29;xf<=33;xf++)place(city,xf,4,'off');
+    // 沿 x=28 竖路补两栋办公楼（(29,y) 西邻竖路）
+    place(city,29,8,'off');
+    place(city,29,16,'off');
+    place(city,35,2,'waste');
+    place(city,35,6,'edu3');     // 东邻 x=36 竖路
+    place(city,34,9,'park');
+    place(city,41,8,'res');      // 孤立住宅：展示未连通压暗
+    city.money=18000;            // 演示起始资金
+    updateConnectivity(city);
+    syncCars(city,tr);   // 先同步车辆，让预热结算也拿到真实拥堵率
+    for(var k=0;k<14;k++){
+      var mb=city.money;
+      settle(city,{jamRatio:tr.cars.length>0?tr.jamCount/tr.cars.length:0});
+      recordSettle(gameClock,city.money-mb);
+    }
+    // 演示数据：三栋相邻住宅固定为 L1/L2/L3，直观展示高度阶梯（不动任何规则函数）
+    city.cells[idx(9,2)].level=1;
+    city.cells[idx(11,2)].level=2;
+    city.cells[idx(13,2)].level=3;
+    city.cells[idx(29,4)].level=2;
+    city.cells[idx(31,4)].level=3;
+    syncCars(city,tr);
+    for(var t=0;t<260;t++){trafficTick(city,tr);pedsTick(city,gamePeds,tr);} // 快进车辆 / 行人
+    var guard=0;                                  // 再快进到出现一次堵车，方便直观看到红灯车
+    while(tr.jamCount===0&&guard<800){trafficTick(city,tr);pedsTick(city,gamePeds,tr);guard++;}
+    // 相机对准演示城区（3D：略偏北，让街区占满画面、少留前景空地）。
+    // 完整复位 yaw/pitch：开局面电影镜头或用户旋转过的角度不能带进演示城
+    if(R3)R3.setCamera({yaw:Math.PI*0.25,pitch:0.74,dist:78/CAMERA_ZOOM});
+    setZoom(CAMERA_ZOOM);
+    setCenterGrid(22,7);
+    if(R3)R3.rebuild(city);
+    refreshActorMaps();
+    syncHUD();render(ctx,city,tr,-1,pedMapCache);
+  }
+
+  var params={};
+  var query=location.search.replace(/^\?/,'')||location.hash.replace(/^#/,'');
+  query.split('&').forEach(function(kv){
+    if(!kv)return;var p=kv.split('=');params[p[0]]=decodeURIComponent(p[1]||'');
+  });
+  if(params.clean==='1'){var side=document.querySelector('.side');if(side)side.style.display='none';document.body.style.background='#EEF1F7';}
+  // 开局面背景城（2026-11-23 用户要求）：未点开始前先展示一座实时渲染的繁华示例城
+  // （#demo=1 仍走原 loadDemo 演示城，供截图/回归用）
+  if(!params.demo){
+    city=buildShowcaseCity(); tr=createTraffic(); gameClock=createClock(); gamePeds=createPeds();
+    syncCars(city,tr);
+  }
+  refreshActorMaps();   // 审计 #20：首帧渲染前先建好汇总缓存
+  // 叠加层按钮（优化 #3；2026-11-24 用户要求拆成独立按钮）：点哪枚切哪档，不再循环
+  byId('canvasTools').addEventListener('click',function(e){
+    e.stopPropagation();
+    var b=e.target&&e.target.closest?e.target.closest('[data-ov]'):null;
+    if(!b)return;
+    overlayIdx=Number(b.getAttribute('data-ov'))||0;
+    applyOverlay();
+  });
+  // 返回主界面（2026-11-24 用户要求）：先弹「是否退回至主界面？」二次确认，确定才回开局面
+  function openHomeConfirm(){
+    byId('homeMask').classList.add('show');
+    byId('homeBox').classList.add('show');
+  }
+  function closeHomeConfirm(){
+    byId('homeMask').classList.remove('show');
+    byId('homeBox').classList.remove('show');
+  }
+  // 回到开局面：一次性游玩，当前进度直接丢弃，重建示例城当背景 + 电影镜头
+  function backToMenu(){
+    started=false; infiniteMoney=false;
+    closeInspect(); overlayIdx=0;
+    if(!params.demo){
+      city=buildShowcaseCity(); tr=createTraffic(); gameClock=createClock(); gamePeds=createPeds();
+      syncCars(city,tr);
+    }else{
+      clearCity();   // #demo=1：回到空演示城，保持默认相机
+    }
+    if(R3){
+      R3.rebuild(city); R3.setOverlay('');
+      R3.setCamera({yaw:0.55,pitch:0.62,dist:13}); R3.setTarget(25,24);
+    }else{
+      setZoom(CAMERA_ZOOM); setCenterGrid(Math.floor(SIZE/2),8);
+    }
+    refreshActorMaps(); applyOverlay();
+    showMenu(true); syncHUD(); render(ctx,city,tr,-1,pedMapCache);
+  }
+  byId('btnHome').addEventListener('click',function(e){ e.stopPropagation(); openHomeConfirm(); });
+  byId('homeCancel').addEventListener('click',function(e){ e.stopPropagation(); closeHomeConfirm(); });
+  byId('homeMask').addEventListener('click',function(e){ e.stopPropagation(); closeHomeConfirm(); });
+  byId('homeOk').addEventListener('click',function(e){ e.stopPropagation(); closeHomeConfirm(); backToMenu(); });
+  paintOverlayButtons();   // 启动时先按默认档（关闭）刷一次高亮
+  setupCanvas();renderTools();applySettings();
+  if (R3) {
+    // 3D：程序化立面 atlas（无图片依赖），再按当前城市建几何
+    R3.buildAtlas(SPRITE_NAMES);
+    R3.rebuild(city);
+    // 开局面电影镜头（2026-11-23）：贴近示例城中心，trafficTick 里慢速环绕
+    // （#demo=1 直接进演示城，保持默认相机，供截图/回归）
+    if (!started && !params.demo) { R3.setCamera({ yaw: 0.55, pitch: 0.62, dist: 13 }); R3.setTarget(25, 24); }
+    render(ctx,city,tr,hoverIdx,pedMapCache);
+  } else {
+    loadSprites();      // 2D 降级：与小程序同一套 PNG 贴图；加载完成后自动重绘一次
+  }
+  if(params.demo==='1')loadDemo();
+  setInterval(function(){
+    var before=city.money;
+    settle(city,{jamRatio:tr.cars.length>0?tr.jamCount/tr.cars.length:0});
+    if(infiniteMoney)city.money=INFINITE_MONEY;   // 无限资金：结算后资金回满
+    recordSettle(gameClock,city.money-before); // 每秒收益 = 结算变化 / 2 秒
+    syncHUD();render(ctx,city,tr,hoverIdx,pedMapCache);
+  },2000);
+  setInterval(function(){
+    // 开局面镜头慢速环绕（约 4 分半一圈）；菜单被测试钩子强制隐藏时也停转，
+    // 否则相机漂移会让「先投影再移动鼠标」的端到端用例错位
+    var menuVisible = isMenuOpen();
+    if(!started && menuVisible && R3)R3.orbit(0.0022,0);
+    trafficTick(city,tr,settings.maxCars);
+    gameClock.elapsed+=0.12*settings.daySpeed;  // 默认 1x：昼夜 5 分钟一轮；只改游戏内时间流速
+    pedsTick(city,gamePeds,tr);                 // 行人小黑点
+    refreshActorMaps();                         // 审计 #20：车辆/行人位置变了才刷新缓存
+    // 结算速度（仅 UI）：只改画面/HUD 刷新频率，2 秒结算与收益完全不变
+    window.__uiFrame=(window.__uiFrame||0)+1;
+    var uiSpeed=settings.settleUiSpeed;
+    if(uiSpeed>=2||uiSpeed===1||window.__uiFrame%2===0){
+      syncHUD();render(ctx,city,tr,hoverIdx,pedMapCache);
+      if(uiSpeed>=2)requestRender();
+    }
+  },120);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>一局之城 · 横屏单机城建游戏</title>
+<style>
+  :root{
+    --bg:#07120c; --card:#0e1f16; --pill:#122a1e;
+    --stroke:#1d3a2b; --stroke-soft:#182e22;
+    --accent:#4ade80; --accent2:#38bdf8;
+    --text:#eef7f0; --muted:#7e9488;
+    --warn:#ffc24b; --warn-bg:#1e1a0c; --warn-stroke:#3b3012;
+    --danger:#ff5c7a;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:radial-gradient(1200px 620px at 50% -12%,#0d2318 0%,#07120c 62%);
+    color:var(--text);
+    font-family:"PingFang SC","Microsoft YaHei","Helvetica Neue",Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:inherit;text-decoration:none}
+  .wrap{max-width:1160px;margin:0 auto;padding:0 24px}
+
+  /* ---------- 顶部 ---------- */
+  header{padding:52px 0 8px;text-align:center}
+  .logo{display:inline-flex;align-items:center;gap:12px}
+  .logo .mark{width:8px;height:30px;border-radius:99px;background:linear-gradient(180deg,var(--accent),var(--accent2))}
+  .logo h1{font-size:34px;letter-spacing:.16em;font-weight:600}
+  header p.tag{margin-top:16px;font-size:14px;color:#b8cdbf;letter-spacing:.04em}
+  .badges{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:22px}
+  .badge{
+    font-size:12px;padding:7px 13px;border-radius:99px;border:1px solid var(--stroke);
+    background:var(--pill);color:#c2d5c7;
+  }
+  .badge b{color:var(--accent)}
+  .cta-row{display:flex;gap:12px;justify-content:center;margin-top:26px;flex-wrap:wrap}
+  .btn{
+    font-size:13.5px;padding:11px 22px;border-radius:99px;border:1px solid var(--stroke-soft);
+    background:var(--pill);color:var(--text);transition:.2s;
+  }
+  .btn:hover{border-color:#2a4a37}
+  .btn.primary{
+    background:linear-gradient(90deg,var(--accent),var(--accent2));color:#06170d;font-weight:700;border:0;
+  }
+  .btn.primary:hover{filter:brightness(1.06)}
+
+  /* ---------- 通用标题 ---------- */
+  .sec{padding:64px 0 0}
+  .sec > h2{font-size:19px;font-weight:600;letter-spacing:.03em;display:flex;align-items:center;gap:10px}
+  .sec > h2::before{content:"";width:5px;height:18px;border-radius:99px;background:linear-gradient(180deg,var(--accent),var(--accent2))}
+  .sec > p.desc{margin-top:12px;color:var(--muted);font-size:13px;line-height:1.9;max-width:760px}
+
+  /* ---------- 截图 ---------- */
+  .shot{margin-top:26px;border-radius:18px;overflow:hidden;border:1px solid var(--stroke);
+        box-shadow:0 30px 70px -30px #000;background:var(--card)}
+  .shot img{width:100%;display:block}
+  .shot p{font-size:11.5px;color:var(--muted);text-align:center;padding:10px;letter-spacing:.06em}
+
+  /* ---------- 能力卡 ---------- */
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(248px,1fr));gap:14px;margin-top:24px}
+  .cell{background:var(--card);border:1px solid var(--stroke);border-radius:16px;padding:18px}
+  .cell h3{font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px}
+  .cell h3 i{width:6px;height:6px;border-radius:50%;background:var(--accent);font-style:normal}
+  .cell p{margin-top:8px;font-size:12.5px;color:var(--muted);line-height:1.85}
+
+  /* ---------- 玩法列表 ---------- */
+  .rules{margin-top:24px;background:var(--card);border:1px solid var(--stroke);border-radius:16px;padding:20px 22px}
+  .rules li{list-style:none;font-size:13px;color:#b8cdbf;line-height:2.1;display:flex;gap:10px}
+  .rules li::before{content:"›";color:var(--accent);font-weight:700;flex:none}
+  .rules b{color:var(--text);font-weight:600}
+
+  /* ---------- 更新日志 ---------- */
+  .log{margin-top:24px;display:flex;flex-direction:column;gap:14px}
+  .entry{background:var(--card);border:1px solid var(--stroke);border-radius:16px;padding:18px}
+  .entry h3{font-size:14px;font-weight:600;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .entry h3 .v{color:var(--accent)}
+  .entry h3 .d{font-size:11.5px;color:var(--muted);font-weight:400}
+  .entry ul{margin-top:10px}
+  .entry li{list-style:none;font-size:12.5px;color:var(--muted);line-height:2;display:flex;gap:9px}
+  .entry li::before{content:"·";color:var(--accent);font-weight:700;flex:none}
+
+  footer{margin-top:72px;border-top:1px solid var(--stroke-soft);padding:26px 0 40px;
+         text-align:center;font-size:12px;color:var(--muted)}
+  footer a{color:var(--accent)}
+  @media (max-width:640px){ .logo h1{font-size:26px} header{padding-top:36px} .sec{padding-top:44px} }
+</style>
+</head>
+<body>
+
+<header class="wrap">
+  <div class="logo"><span class="mark"></span><h1>一局之城</h1></div>
+  <p class="tag">横屏单机城建游戏 · 每局都是一座新城市，退出即落幕</p>
+  <div class="badges">
+    <span class="badge">版本 <b>v0.1.0</b></span>
+    <span class="badge">Android <b>8.0+</b></span>
+    <span class="badge">横屏 · 全屏沉浸</span>
+    <span class="badge">WebGL 3D 视角</span>
+    <span class="badge">纯离线 · 零权限</span>
+    <span class="badge">签名 APK <b>2.6 MB</b></span>
+  </div>
+  <div class="cta-row">
+    <a class="btn primary" href="../files/yijuzhicheng-v0.1.0.apk" download>⬇ 安卓下载</a>
+    <a class="btn" href="../">← 返回下载中心</a>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section class="sec">
+    <h2>城市预览</h2>
+    <div class="shot">
+      <img src="screenshot-city.png" alt="一局之城 3D 城市画面" loading="lazy">
+      <p>WebGL 3D 自由视角 · 程序化建筑立面 · 昼夜光照</p>
+    </div>
+  </section>
+
+  <section class="sec">
+    <h2>核心能力</h2>
+    <div class="grid">
+      <div class="cell"><h3><i></i>3D 自由视角</h3>
+        <p>轨道相机随意观察城市：双指缩放、双指拖动、单指建造、长按旋转。设备不支持 WebGL 时自动降级 2D 等距视图，老手机也能玩。</p></div>
+      <div class="cell"><h3><i></i>城市级模拟</h3>
+        <p>住宅、商业、工业、办公四类需求独立演变，幸福度由服务覆盖与税收共同决定；车辆经高速路网寻路，行人穿插街区，堵车真实可见。</p></div>
+      <div class="cell"><h3><i></i>透支建造</h3>
+        <p>资金不足也能先建后赚，金币允许为负；破产锁在 -10000，触锁后只能拆除与查看。不卡进度，城市规划随时动手。</p></div>
+      <div class="cell"><h3><i></i>昼夜与经济</h3>
+        <p>昼夜 5 分钟一轮，08:00 开局；税收按周期结算，道路与建筑有维护成本。服务建筑就近覆盖，垃圾场与墓地是消耗型资源。</p></div>
+      <div class="cell"><h3><i></i>单局制</h3>
+        <p>50×50 格子，四边是永不可建的高速公路。每局从空地开始，退出即落幕、不存档——一次专注建完一座城。</p></div>
+      <div class="cell"><h3><i></i>纯净离线</h3>
+        <p>游戏完全打包在本地，无服务器、无账号、无广告、不申请任何权限，飞行模式也能畅玩。</p></div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <h2>玩法速览</h2>
+    <ul class="rules">
+      <li><b>连通规则</b>：只有道路可自由铺设，其余建筑必须紧邻已连通道路才能开工。</li>
+      <li><b>分区价格</b>：住宅 300 / 商业 450 / 工业 600 / 办公 750 起，密度越高单价越高，拆除返还 30%。</li>
+      <li><b>九种服务</b>：水电局、警察局、消防局、诊所、小学、中学、大学、垃圾场、墓地，外加公园与停车场。</li>
+      <li><b>三道闸门</b>：道路每周期维护费、人口维护费、拥挤度扣住宅幸福——规模越大，越要精打细算。</li>
+      <li><b>破产保护</b>：余额到 -10000 触发破产锁，拆除回血重新出发。</li>
+    </ul>
+  </section>
+
+  <section class="sec">
+    <h2>更新日志</h2>
+    <div class="log">
+      <div class="entry">
+        <h3><span class="v">v0.1.0</span><span class="d">2026-11-26</span></h3>
+        <ul>
+          <li>首个版本：WebGL 3D 自由视角城建，程序化建筑立面，不支持时自动降级 2D</li>
+          <li>横屏全屏沉浸：轨道相机、双指缩放/拖动、单指建造、长按旋转视角</li>
+          <li>完整模拟：RCI+O 四类需求、幸福度、服务覆盖、车流行人、昼夜收益、破产锁</li>
+          <li>单局制：每局一座新城市，退出即落幕，不存档</li>
+          <li>纯离线单机，零权限，已编译签名 APK（2.6 MB）</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="wrap">
+  <a href="../">← 应用下载中心</a> · 本页面与游戏均为静态资源，由 GitHub Pages 托管
+</footer>
+
+</body>
+</html>

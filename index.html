@@ -344,7 +344,7 @@ function verCmp(a, b) {
 
 function openModal(f) {
   document.getElementById('modalName').textContent = f.name + ' · 选择系统';
-  APP_URLS.web = f.iosUrl || f.file;   // 有独立网页版入口（如一局之城）优先用它
+  APP_URLS.web = f.file;
   APP_URLS.apk = f.apkMirror || '';
   // 根据当前设备自动高亮推荐项
   const ua = navigator.userAgent;
@@ -554,7 +554,7 @@ fetch('files.json?t=' + Date.now())
             ${f.pageOnly
               ? `<a class="dl-btn" href="${f.file}" target="_blank" rel="noopener">${f.cta || '📄 查看详情'}</a>`
               : (f.androidOnly && f.apkMirror
-                ? `<a class="dl-btn" href="${f.apkMirror}" download>⬇ 安卓下载</a>${f.iosUrl ? `<a class="dl-btn ghost" href="${f.iosUrl}" target="_blank" rel="noopener">📱 iPhone 网页版</a>` : ''}`
+                ? `<a class="dl-btn" href="${f.apkMirror}" download>⬇ 安卓下载</a>`
                 : `<a class="dl-btn" href="javascript:void(0)">📲 获取应用</a>`)}
           </div>
           ${f.notice ? `<div class="install-tip">${f.notice}</div>` : ''}

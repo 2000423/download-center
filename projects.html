@@ -117,7 +117,7 @@ fetch('files.json?t=' + Date.now())
         : `<div class="shot-none"><span>这款软件的界面演示放在了项目页里（可交互 / 更完整）</span><b>进项目页看 →</b></div>`;
       const dl = [];
       if (f.apkMirror) dl.push(`<a class="dl-btn" href="${f.apkMirror}" download>⬇ 安卓下载</a>`);
-      if (f.iosUrl) dl.push(`<a class="dl-btn ghost" href="${f.iosUrl}" target="_blank" rel="noopener">📱 iPhone 网页版</a>`);
+      if (!f.apkMirror && f.file) dl.push(`<a class="dl-btn" href="${f.file}" target="_blank" rel="noopener">${f.cta || '📲 获取应用'}</a>`);
       return `
       <div class="proj-card">
         <div class="name-row">

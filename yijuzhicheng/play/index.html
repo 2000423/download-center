@@ -3,6 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<!-- PWA / 添加到主屏幕（2026-11-26）：iPhone 从 Safari「分享 → 添加到主屏幕」打开后无地址栏，全屏运行，横屏不再被浏览器搜索栏遮挡 -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="一局之城">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0B1310">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="assets/icon-180.png">
 <title>横屏城市 · 等距视角 + 交通停车可交互预览</title>
 <style>
   * { box-sizing: border-box; }
@@ -55,6 +63,9 @@
   /* 手机全屏模式（clean=1）：去掉模拟器边框，画布按真实视口铺满，不再缩在中间留黑边 */
   body.mode-clean { background: #0B1310 !important; }
   body.mode-clean .phone-land { border: none; border-radius: 0; box-shadow: none; }
+  /* 刘海屏安全区（2026-11-26）：添加到主屏幕全屏运行后，顶栏/底栏避开 iPhone 刘海与小横条 */
+  body.mode-clean .hud { padding-top: env(safe-area-inset-top, 0px); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  body.mode-clean .toolbar { padding-bottom: max(0px, env(safe-area-inset-bottom, 0px)); }
   .hud {
     height: 74px; flex-shrink: 0; display: flex; align-items: center; gap: 12px;
     padding: 0 16px; background: #1E2A44; color: #FFF;

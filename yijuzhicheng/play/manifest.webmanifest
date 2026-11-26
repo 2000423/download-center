@@ -1,0 +1,15 @@
+{
+  "name": "一局之城",
+  "short_name": "一局之城",
+  "description": "横屏单机城建游戏：WebGL 3D 自由视角，单局制，透支建造",
+  "start_url": "./?clean=1",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#0B1310",
+  "theme_color": "#0B1310",
+  "icons": [
+    { "src": "assets/icon-180.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "assets/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

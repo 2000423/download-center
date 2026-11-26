@@ -3,6 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<!-- PWA / 添加到主屏幕（2026-11-26）：iPhone 从 Safari「分享 → 添加到主屏幕」打开后无地址栏，全屏运行，横屏不再被浏览器搜索栏遮挡 -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="一局之城">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0B1310">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="assets/icon-180.png">
 <title>横屏城市 · 等距视角 + 交通停车可交互预览</title>
 <style>
   * { box-sizing: border-box; }
@@ -52,6 +60,12 @@
     box-shadow: 0 24px 60px rgba(26,29,38,.2);
     overflow: hidden; display: flex; flex-direction: column; flex-shrink: 0;
   }
+  /* 手机全屏模式（clean=1）：去掉模拟器边框，画布按真实视口铺满，不再缩在中间留黑边 */
+  body.mode-clean { background: #0B1310 !important; }
+  body.mode-clean .phone-land { border: none; border-radius: 0; box-shadow: none; }
+  /* 刘海屏安全区（2026-11-26）：添加到主屏幕全屏运行后，顶栏/底栏避开 iPhone 刘海与小横条 */
+  body.mode-clean .hud { padding-top: env(safe-area-inset-top, 0px); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  body.mode-clean .toolbar { padding-bottom: max(0px, env(safe-area-inset-bottom, 0px)); }
   .hud {
     height: 74px; flex-shrink: 0; display: flex; align-items: center; gap: 12px;
     padding: 0 16px; background: #1E2A44; color: #FFF;
@@ -2202,6 +2216,28 @@
     setCenterGrid(Math.floor(SIZE/2), 8);
     render(ctx,city,tr,hoverIdx,pedMapCache);
   }
+  // 手机全屏适配（2026-11-26）：clean=1 下把固定 940×380 画布改为真实视口大小，铺满整屏不留黑边。
+  // 拾取/手势全部按 getBoundingClientRect 的 CSS 坐标换算，画布尺寸变化不影响点格与双指。
+  window.__resizeGame=function(vw,vh){
+    var land=document.querySelector('.phone-land');
+    if(!land)return;
+    land.style.width=vw+'px';
+    land.style.height=vh+'px';
+    land.style.transform='none';
+    var extra=0,parts=land.querySelectorAll('.hud,.game-hint,.toolbar'),i;
+    for(i=0;i<parts.length;i++) extra+=parts[i].offsetHeight;
+    VIEW_W=Math.max(320,Math.round(vw));
+    VIEW_H=Math.max(200,Math.round(vh-extra));
+    canvas.style.width=VIEW_W+'px';
+    canvas.style.height=VIEW_H+'px';
+    applyRenderScale();
+    // 2D 等距模式：重算适配比例，保留用户当前缩放；3D 模式下一帧 drawFrame 自动用新视口
+    var lw=(SIZE-1)*TILE_W+TILE_W, lh=(SIZE-1)*TILE_H+TILE_H+BUILD_H;
+    fit=Math.min(VIEW_W/lw, VIEW_H/lh);
+    scale=fit*zoom;
+    clampCamera();
+    render(ctx,city,tr,-1,pedMapCache);
+  };
   function byId(id){ return document.getElementById(id); }
   function groupNumber(n){
     var s=Math.abs(Math.round(n)).toString(), out='';
@@ -3097,34 +3133,20 @@
     window.addEventListener('orientationchange',function(){ setTimeout(checkOrient,120); });
     checkOrient();
   })();
-  // ===== 手机横屏适配（2026-11-26）：画面整体等比缩放，装进视口，不再上下左右滚动 =====
-  // .phone-land 是固定 960×552 的布局盒，小屏上放不下。这里用 CSS transform 整体缩放：
-  // 拾取/手势全部走 getBoundingClientRect（已含缩放系数），所以点格、双指、旋转的坐标不受影响。
-  // 只在 clean=1（手机模式）下生效；桌面带侧栏的预览布局不动。
+  // ===== 手机横屏适配（2026-11-26 二次改版）：不再整体缩放固定盒子，而是画布直接铺满真实视口 =====
+  // .phone-land 去边框后宽高 = 视口，画布 = 视口减去 HUD/提示/工具栏，四周不再有黑边。
+  // 拾取/手势走 getBoundingClientRect（已含实际尺寸），点格、双指、旋转坐标全部不受影响。
   (function(){
     var side=document.querySelector('.side');
     var sideHidden=!side||side.style.display==='none';
-    var stage=document.querySelector('.stage'), phone=document.querySelector('.phone-land');
-    if(!stage||!phone||!sideHidden)return;
+    if(!sideHidden)return;
+    document.body.classList.add('mode-clean');
     function fitStage(){
-      var vw=window.innerWidth, vh=window.innerHeight;
-      var s=Math.min((vw-8)/960,(vh-8)/552);
-      if(s>1)s=1;   // 只缩小不放大，避免大屏上画布发虚
-      document.body.style.padding='0';
-      document.body.style.overflow='hidden';
-      stage.style.height=vh+'px';
-      stage.style.minHeight='0';
-      stage.style.alignItems='center';
-      stage.style.justifyContent='center';
-      stage.style.flexWrap='nowrap';
-      stage.style.gap='0';
-      stage.style.padding='0';
-      phone.style.transform='scale('+s+')';
-      phone.style.transformOrigin='center center';
-      phone.style.margin='0';
+      if(!window.__resizeGame)return;
+      window.__resizeGame(window.innerWidth, window.innerHeight);
     }
     window.addEventListener('resize',fitStage);
-    window.addEventListener('orientationchange',fitStage);
+    window.addEventListener('orientationchange',function(){ setTimeout(fitStage,150); });
     fitStage();
   })();
   // 开局面背景城（2026-11-23 用户要求）：未点开始前先展示一座实时渲染的繁华示例城

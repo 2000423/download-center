@@ -21,7 +21,7 @@
   }
   a { color: inherit; text-decoration: none; }
 
-  .wrap { max-width: 720px; margin: 0 auto; padding: 48px 20px 80px; }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 48px 20px 80px; position: relative; }
 
   header { text-align: center; margin-bottom: 40px; }
   .logo {
@@ -96,9 +96,9 @@
   }
   .dl-btn.ghost:hover { box-shadow: 0 0 24px rgba(0,229,255,.25); }
 
-  /* ===== 右上角「项目页」入口 ===== */
+  /* ===== 页面右上角「项目页」入口（随页面滚动，不钉在屏幕上）===== */
   .proj-btn {
-    position: fixed; top: 16px; right: 16px; z-index: 50;
+    position: absolute; top: 52px; right: 20px; z-index: 50;
     display: inline-flex; align-items: center; gap: 7px;
     padding: 9px 18px; border-radius: 999px; font-size: 13px; font-weight: 600;
     color: #b39dff; background: rgba(123,92,255,.14);
@@ -108,7 +108,7 @@
   }
   .proj-btn:hover { color: #d3c6ff; box-shadow: 0 0 26px rgba(123,92,255,.4); transform: translateY(-1px); }
   .proj-btn:active { transform: scale(.96); }
-  @media (max-width: 560px) { .proj-btn { top: 10px; right: 10px; padding: 7px 14px; font-size: 12px; } }
+  @media (max-width: 560px) { .proj-btn { top: 14px; right: 14px; padding: 7px 14px; font-size: 12px; } }
 
   /* ===== 版本更新日志 ===== */
   .log-toggle {
@@ -244,8 +244,8 @@
 </style>
 </head>
 <body>
-  <a class="proj-btn" href="projects.html">🗂 项目页</a>
   <div class="wrap">
+  <a class="proj-btn" href="projects.html">🗂 项目页</a>
     <header>
       <div class="logo">
         <svg viewBox="0 0 48 48" fill="none">
@@ -344,7 +344,7 @@ function verCmp(a, b) {
 
 function openModal(f) {
   document.getElementById('modalName').textContent = f.name + ' · 选择系统';
-  APP_URLS.web = f.file;
+  APP_URLS.web = f.iosUrl || f.file;   // 有独立网页版入口（如一局之城）优先用它
   APP_URLS.apk = f.apkMirror || '';
   // 根据当前设备自动高亮推荐项
   const ua = navigator.userAgent;

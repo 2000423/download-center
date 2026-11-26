@@ -15,10 +15,10 @@
       radial-gradient(700px 380px at 85% 110%, rgba(123,92,255,.10) 0%, transparent 60%);
   }
   a { color: inherit; text-decoration: none; }
-  .wrap { max-width: 720px; margin: 0 auto; padding: 48px 20px 80px; }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 48px 20px 80px; position: relative; }
 
   .proj-btn {
-    position: fixed; top: 16px; right: 16px; z-index: 50;
+    position: absolute; top: 52px; right: 20px; z-index: 50;
     display: inline-flex; align-items: center; gap: 7px;
     padding: 9px 18px; border-radius: 999px; font-size: 13px; font-weight: 600;
     color: #b39dff; background: rgba(123,92,255,.14);
@@ -28,6 +28,7 @@
   }
   .proj-btn:hover { color: #d3c6ff; box-shadow: 0 0 26px rgba(123,92,255,.4); transform: translateY(-1px); }
   .proj-btn:active { transform: scale(.96); }
+  @media (max-width: 560px) { .proj-btn { top: 14px; right: 14px; padding: 7px 14px; font-size: 12px; } }
 
   header { text-align: center; margin-bottom: 36px; }
   header h1 {
@@ -37,47 +38,64 @@
   header .sub { margin-top: 10px; font-size: 14px; color: rgba(232,246,255,.55); }
 
   .proj-card {
-    display: flex; gap: 16px; align-items: flex-start;
     background: rgba(255,255,255,.06);
     -webkit-backdrop-filter: blur(24px) saturate(160%); backdrop-filter: blur(24px) saturate(160%);
     border: 1px solid rgba(255,255,255,.14); border-radius: 22px;
-    padding: 22px; margin-bottom: 18px;
+    padding: 24px; margin-bottom: 22px;
     box-shadow: 0 10px 36px rgba(0,0,0,.35);
-    transition: transform .2s, border-color .2s;
   }
-  .proj-card:hover { transform: translateY(-3px); border-color: rgba(179,157,255,.45); }
+  .name-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
   .icon {
-    flex: none; width: 60px; height: 60px; border-radius: 16px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 26px;
+    width: 52px; height: 52px; border-radius: 14px; flex: none;
+    display: flex; align-items: center; justify-content: center; font-size: 24px;
     background: linear-gradient(135deg, #00e5ff, #7b5cff);
-    box-shadow: 0 0 26px rgba(0,229,255,.3);
+    box-shadow: 0 0 22px rgba(0,229,255,.3);
   }
-  .info { flex: 1; min-width: 0; }
-  .name-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-  .fname { font-size: 18px; font-weight: 700; }
+  .fname { font-size: 20px; font-weight: 800; }
   .ver { font-size: 11px; padding: 3px 9px; border-radius: 999px; background: rgba(0,229,255,.14); border: 1px solid rgba(0,229,255,.45); color: #5df0ff; }
   .tag { font-size: 11px; padding: 3px 9px; border-radius: 999px; background: rgba(140,110,255,.13); border: 1px solid rgba(140,110,255,.4); color: #b39dff; }
-  .desc { margin-top: 8px; font-size: 13px; line-height: 1.7; color: rgba(232,246,255,.7); }
-  .go {
-    margin-top: 12px; display: inline-flex; align-items: center; gap: 6px;
-    font-size: 13px; font-weight: 700; color: #5df0ff;
-    padding: 9px 20px; border-radius: 999px;
-    background: rgba(0,229,255,.10); border: 1px solid rgba(0,229,255,.4);
-    transition: box-shadow .2s, background .2s;
+
+  .sec-title { margin-top: 16px; font-size: 13px; font-weight: 700; letter-spacing: .06em; display: flex; align-items: center; gap: 8px; }
+  .sec-title::before { content: ""; width: 4px; height: 14px; border-radius: 99px; background: linear-gradient(180deg, #00e5ff, #7b5cff); }
+  .intro { margin-top: 8px; font-size: 13.5px; line-height: 1.8; color: rgba(232,246,255,.75); }
+  .feat { margin-top: 8px; }
+  .feat li { list-style: none; font-size: 13px; line-height: 1.9; color: rgba(232,246,255,.75); display: flex; gap: 8px; }
+  .feat li::before { content: "✓"; color: #5df0ff; font-weight: 700; flex: none; }
+  .lim { margin-top: 8px; }
+  .lim li { list-style: none; font-size: 12.5px; line-height: 1.9; color: rgba(232,246,255,.55); display: flex; gap: 8px; }
+  .lim li::before { content: "✕"; color: rgba(255,170,170,.75); font-weight: 700; flex: none; }
+
+  .shot { margin-top: 10px; border-radius: 14px; overflow: hidden; border: 1px solid rgba(255,255,255,.14); background: rgba(0,0,0,.25); }
+  .shot img { width: 100%; display: block; }
+  .shot-cap { font-size: 11px; color: rgba(232,246,255,.4); text-align: center; padding: 8px; }
+  .shot-none {
+    margin-top: 10px; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    border: 1px dashed rgba(93,240,255,.35); border-radius: 14px; padding: 13px 16px;
+    font-size: 12.5px; color: rgba(232,246,255,.55);
   }
-  .proj-card:hover .go { box-shadow: 0 0 24px rgba(0,229,255,.25); background: rgba(0,229,255,.16); }
+  .shot-none b { color: #5df0ff; white-space: nowrap; }
+
+  .dl-row { margin-top: 16px; display: flex; gap: 12px; flex-wrap: wrap; }
+  .dl-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 10px 22px; border-radius: 999px; font-size: 13.5px; font-weight: 700; color: #06121f;
+    background: linear-gradient(90deg, #00e5ff, #7b5cff);
+    box-shadow: 0 0 22px rgba(0,229,255,.35); transition: transform .15s;
+  }
+  .dl-btn:active { transform: scale(.97); }
+  .dl-btn.ghost { background: rgba(255,255,255,.08); color: #5df0ff; border: 1px solid rgba(93,240,255,.45); box-shadow: none; }
+
   .loading, .empty { text-align: center; padding: 60px 0; font-size: 14px; color: rgba(232,246,255,.4); }
   footer { text-align: center; margin-top: 46px; font-size: 12px; color: rgba(232,246,255,.4); }
   footer a { color: rgba(93,240,255,.75); }
 </style>
 </head>
 <body>
-  <a class="proj-btn" href="index.html">← 下载中心</a>
   <div class="wrap">
+    <a class="proj-btn" href="index.html">← 下载中心</a>
     <header>
       <h1>项目页</h1>
-      <div class="sub">这里是我做的每一个应用，点进卡片查看详细介绍、玩法说明与更新日志</div>
+      <div class="sub">每个软件是什么、能做什么、做不到什么，一篇看明白</div>
     </header>
     <main id="list"><div class="loading">加载中…</div></main>
     <footer>Powered by GitHub Pages · <a href="index.html">返回下载中心</a></footer>
@@ -92,19 +110,32 @@ fetch('files.json?t=' + Date.now())
     if (!files.length) { list.innerHTML = '<div class="empty">暂无应用</div>'; return; }
     list.innerHTML = files.map(f => {
       const tags = (f.tags || []).map(t => `<span class="tag">${t}</span>`).join('');
+      const feats = (f.features || []).map(x => `<li>${x}</li>`).join('');
+      const lims = (f.limits || []).map(x => `<li>${x}</li>`).join('');
+      const shot = f.shot
+        ? `<div class="shot"><img src="${f.shot}" alt="${f.name} 界面" loading="lazy"><div class="shot-cap">${f.name} · 实际运行画面</div></div>`
+        : `<div class="shot-none"><span>这款软件的界面演示放在了项目页里（可交互 / 更完整）</span><b>进项目页看 →</b></div>`;
+      const dl = [];
+      if (f.apkMirror) dl.push(`<a class="dl-btn" href="${f.apkMirror}" download>⬇ 安卓下载</a>`);
+      if (f.iosUrl) dl.push(`<a class="dl-btn ghost" href="${f.iosUrl}" target="_blank" rel="noopener">📱 iPhone 网页版</a>`);
       return `
-      <a class="proj-card" href="${f.file}" target="_blank" rel="noopener">
-        <div class="icon">${f.icon || 'APP'}</div>
-        <div class="info">
-          <div class="name-row">
-            <span class="fname">${f.name}</span>
-            <span class="ver">v${f.version}</span>
-            ${tags}
-          </div>
-          <div class="desc">${f.desc || ''}</div>
-          <span class="go">进入项目页 →</span>
+      <div class="proj-card">
+        <div class="name-row">
+          <span class="icon">${f.icon || 'APP'}</span>
+          <span class="fname">${f.name}</span>
+          <span class="ver">v${f.version}</span>
+          ${tags}
         </div>
-      </a>`;
+        <div class="sec-title">介绍</div>
+        <div class="intro">${f.desc || ''}</div>
+        <div class="sec-title">它可以做什么</div>
+        <ul class="feat">${feats}</ul>
+        <div class="sec-title">界面展示</div>
+        ${shot}
+        <div class="sec-title">它暂时做不到什么</div>
+        <ul class="lim">${lims}</ul>
+        ${dl.length ? `<div class="dl-row">${dl.join('')}</div>` : ''}
+      </div>`;
     }).join('');
   })
   .catch(() => { document.getElementById('list').innerHTML = '<div class="empty">加载失败，请刷新重试</div>'; });

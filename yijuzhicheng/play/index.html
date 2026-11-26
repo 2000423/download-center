@@ -8,7 +8,7 @@
   * { box-sizing: border-box; }
   /* 全局字体与滚动条：中文优先 Noto Sans SC，细滚动条与子工具栏统一（2026-11-25） */
   html, body, button, input { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif; }
-  html { scrollbar-width: thin; scrollbar-color: rgba(150,168,196,.45) transparent; }
+  html { scrollbar-width: thin; scrollbar-color: rgba(150,168,196,.45) transparent; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   body::-webkit-scrollbar, .side::-webkit-scrollbar, .toolbar::-webkit-scrollbar { width: 8px; height: 8px; }
   body::-webkit-scrollbar-thumb, .side::-webkit-scrollbar-thumb, .toolbar::-webkit-scrollbar-thumb { background: rgba(150,168,196,.42); border-radius: 999px; }
   body::-webkit-scrollbar-track, .side::-webkit-scrollbar-track, .toolbar::-webkit-scrollbar-track { background: transparent; }
@@ -150,7 +150,7 @@
   .tool-price.price-debt { color: #FFB765; opacity: 1; }
   .tool-price.price-bad { color: #FF8B8B; opacity: 1; }
   .canvas-wrap { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 0; position: relative; }
-  #mapCanvas { width: 940px; height: 380px; display: block; cursor: crosshair; }
+  #mapCanvas { width: 940px; height: 380px; display: block; cursor: crosshair; touch-action: none; }
   .game-hint {
     height: 20px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
     background: #16202F; color: rgba(255,255,255,.5); font-size: 11px; white-space: nowrap; overflow: hidden;
@@ -2845,27 +2845,31 @@
     var a=localXY(touches[0].clientX,touches[0].clientY), b=localXY(touches[1].clientX,touches[1].clientY);
     return Math.atan2(b.y-a.y, b.x-a.x);
   }
-  var twistBase=null;
+  var twistBase=null, touchTap=null, touchPan=null;
   canvas.addEventListener('touchstart',function(e){
     e.preventDefault();
     closeInfoBox();   // 触屏操作时关掉悬停信息面板（2026-11-23 bug 修复 #5）
-    if(e.touches.length>=2){ touchGesture=touchMid(e.touches); twistBase=touchAngle(e.touches); return; }
+    if(e.touches.length>=2){ touchGesture=touchMid(e.touches); twistBase=touchAngle(e.touches); touchTap=null; touchPan=null; return; }
     twistBase=null;
     touchGesture=null;
-    pointerDown(e.touches[0].clientX,e.touches[0].clientY);
+    // 单指手势重做（2026-11-26）：触摸瞬间不再直接建造/查看，
+    // 先记下起点，等 touchend 判定是「干净点按」还是「拖动平移」——
+    // 这样捏合/拖动都不会误触区块信息，单指拖动=移动视野。
+    var t=e.touches[0];
+    touchTap={x:t.clientX,y:t.clientY,moved:false};
   },{passive:false});
   canvas.addEventListener('touchmove',function(e){
     e.preventDefault();
     if(e.touches.length>=2){
       if(!touchGesture){ touchGesture=touchMid(e.touches); twistBase=touchAngle(e.touches); return; }
       var now=touchMid(e.touches);
-      // 双指扭转 = 自由旋转（3D 每帧跟随；2D 每 40° 触发一次 90°，避免和平移/缩放抢手势）
+      // 双指扭转 = 自由旋转（2026-11-26 方向修复：手指顺时针转，画面跟着顺时针转）
       if(twistBase!==null){
         var ang=touchAngle(e.touches), d=ang-twistBase;
         while(d>Math.PI) d-=Math.PI*2;
         while(d<-Math.PI) d+=Math.PI*2;
         if(R3){
-          if(Math.abs(d)>0.01){ R3.orbit(-d,0); twistBase=ang; touchGesture=now; render(ctx,city,tr,hoverIdx,pedMapCache); return; }   // 取负：画面跟随手指，与中键拖动同一手感
+          if(Math.abs(d)>0.01){ R3.orbit(d,0); twistBase=ang; touchGesture=now; render(ctx,city,tr,hoverIdx,pedMapCache); return; }
         }else if(Math.abs(d)>Math.PI/4.5){
           rotateBy(d>0?1:-1); twistBase=ang; touchGesture=now; afterRotate(); return;
         }
@@ -2885,13 +2889,36 @@
       return;
     }
     if(touchGesture){ touchGesture=null; last=-1; return; }
+    if(touchTap){
+      // 单指拖动 = 平移视野（抓取语义：画面跟着手指走），超过 10px 才启动，避免轻点抖动误平移
+      var t=e.touches[0];
+      var p=localXY(t.clientX,t.clientY);
+      if(!touchPan && (Math.abs(t.clientX-touchTap.x)>10 || Math.abs(t.clientY-touchTap.y)>10)){
+        touchPan={x:p.x,y:p.y};
+      }
+      if(touchPan){
+        if(R3) R3.panByPixels(p.x-touchPan.x, p.y-touchPan.y, VIEW_W, VIEW_H);
+        else panBy(p.x-touchPan.x, p.y-touchPan.y);
+        touchPan={x:p.x,y:p.y};
+        render(ctx,city,tr,-1,pedMapCache);
+      }
+      return;
+    }
     pointerMove(e.touches[0].clientX,e.touches[0].clientY);
   },{passive:false});
   canvas.addEventListener('touchend',function(e){
     if(!e.touches||e.touches.length<2) twistBase=null;
-    if(!e.touches||e.touches.length===0) touchGesture=null;
+    if(!e.touches||e.touches.length===0){
+      // 手指全部抬起：干净点按 = 建造 / 查看区块（与鼠标点击同一条 applyAt 链路）
+      if(touchTap && !touchPan){ pointerDown(touchTap.x,touchTap.y); pointerUp(); }
+      touchTap=null; touchPan=null;
+    }else{
+      // 双指捏合结束剩一根手指：不当作新的点按，直接结束手势
+      touchTap=null; touchPan=null;
+    }
     pointerUp();
   });
+  canvas.addEventListener('touchcancel',function(){ touchTap=null; touchPan=null; touchGesture=null; twistBase=null; pointerUp(); });
 
   byId('mask').onclick=closeInspect;
   // 触屏点 mask 关闭弹窗（2026-11-23 bug 修复 #5）：canvas 的 touchstart preventDefault
@@ -3048,7 +3075,28 @@
   query.split('&').forEach(function(kv){
     if(!kv)return;var p=kv.split('=');params[p[0]]=decodeURIComponent(p[1]||'');
   });
-  if(params.clean==='1'){var side=document.querySelector('.side');if(side)side.style.display='none';document.body.style.background='#EEF1F7';}
+  if(params.clean==='1'){var side=document.querySelector('.side');if(side)side.style.display='none';document.body.style.background='#0B111C';}
+  // ===== 竖屏提示（2026-11-26）：手机竖着拿时游戏没法玩（iOS Safari 也不能程序锁横屏），
+  // 盖一层「请横屏」提示，横过来自动消失。仅在 clean=1 且触屏设备生效。
+  (function(){
+    var tip=document.createElement('div');
+    tip.id='rotateTip';
+    tip.style.cssText='position:fixed;inset:0;background:#0B111C;color:#E7EDF7;display:none;'+
+      'flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:99999;text-align:center;padding:24px';
+    tip.innerHTML='<div style="font-size:46px">📱↻</div>'+
+      '<div style="font-size:17px;font-weight:600">请把手机横过来</div>'+
+      '<div style="font-size:13px;color:#8FA0B8;line-height:1.8">一局之城是横屏游戏，横持手机后画面会自动铺满整屏。<br>关闭竖屏方向锁定效果更佳。</div>';
+    document.body.appendChild(tip);
+    function checkOrient(){
+      var touch=false;
+      try{ touch=window.matchMedia('(pointer:coarse)').matches; }catch(e){ touch='ontouchstart' in window; }
+      var portrait=window.innerHeight>window.innerWidth*1.05;
+      tip.style.display=(touch&&portrait)?'flex':'none';
+    }
+    window.addEventListener('resize',checkOrient);
+    window.addEventListener('orientationchange',function(){ setTimeout(checkOrient,120); });
+    checkOrient();
+  })();
   // ===== 手机横屏适配（2026-11-26）：画面整体等比缩放，装进视口，不再上下左右滚动 =====
   // .phone-land 是固定 960×552 的布局盒，小屏上放不下。这里用 CSS transform 整体缩放：
   // 拾取/手势全部走 getBoundingClientRect（已含缩放系数），所以点格、双指、旋转的坐标不受影响。

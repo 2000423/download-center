@@ -17,9 +17,16 @@ gradle assembleRelease
 ## 结构
 
 - `app/src/main/assets/www/`：游戏本体（`preview-app.html` + `utils/render3d.js` + `assets/sprites/` 30 张 2D 降级贴图），来自微信小程序工程的 Web 版，不要把小程序 `pages/` 代码混进来
+- `play/`：iPhone / 网页版（同样的游戏文件，静态托管在 GitHub Pages，入口 `play/?clean=1`），改游戏时与 APK assets 里的副本**同步更新**
 - `MainActivity.kt`：WebView 壳，锁横屏、沉浸全屏、DOM storage 开启、加载 `?clean=1`（隐藏说明栏）、仅允许 file:///android_asset 导航
 - `screenshot-city.png`：项目页展示图（3D 城市画面）
 - `index.html`：下载中心项目页
+
+## 移动端适配（2026-11-26，v0.1.1）
+
+- `preview-app.html` 末尾的 fitStage：clean=1 模式下把固定 960×552 的 `.phone-land` 用 CSS transform 等比缩放进视口，不再滚动；拾取/手势走 getBoundingClientRect，缩放不影响坐标
+- 双指缩放 3D 方向修复：`R3.zoomBy(touchGesture.dist/now.dist)`（手指张开 = 拉近）
+- viewport 加 `maximum-scale=1, user-scalable=no`，防 iOS Safari 页面级缩放干扰游戏手势
 
 ## 注意
 

@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>横屏城市 · 等距视角 + 交通停车可交互预览</title>
 <style>
   * { box-sizing: border-box; }
@@ -2872,7 +2872,10 @@
       }
       if(R3){
         R3.panByPixels(now.x-touchGesture.x, now.y-touchGesture.y, VIEW_W, VIEW_H);
-        R3.zoomBy(now.dist/touchGesture.dist);
+        // 双指缩放（2026-11-26 方向修复）：手指张开 = 拉近（dist 变小），捏合 = 拉远。
+        // zoomBy(f) 是 cam.dist *= f，dist 越小越近，所以比率要取倒数——
+        // 原来写成 now/last，导致双指张开反而缩小，与滚轮（deltaY<0 = 1/1.15 = 拉近）相反。
+        R3.zoomBy(touchGesture.dist/now.dist);
       }else{
         panBy(now.x-touchGesture.x, now.y-touchGesture.y);
         setZoom(zoom*(now.dist/touchGesture.dist), now.x, now.y);
@@ -3046,6 +3049,36 @@
     if(!kv)return;var p=kv.split('=');params[p[0]]=decodeURIComponent(p[1]||'');
   });
   if(params.clean==='1'){var side=document.querySelector('.side');if(side)side.style.display='none';document.body.style.background='#EEF1F7';}
+  // ===== 手机横屏适配（2026-11-26）：画面整体等比缩放，装进视口，不再上下左右滚动 =====
+  // .phone-land 是固定 960×552 的布局盒，小屏上放不下。这里用 CSS transform 整体缩放：
+  // 拾取/手势全部走 getBoundingClientRect（已含缩放系数），所以点格、双指、旋转的坐标不受影响。
+  // 只在 clean=1（手机模式）下生效；桌面带侧栏的预览布局不动。
+  (function(){
+    var side=document.querySelector('.side');
+    var sideHidden=!side||side.style.display==='none';
+    var stage=document.querySelector('.stage'), phone=document.querySelector('.phone-land');
+    if(!stage||!phone||!sideHidden)return;
+    function fitStage(){
+      var vw=window.innerWidth, vh=window.innerHeight;
+      var s=Math.min((vw-8)/960,(vh-8)/552);
+      if(s>1)s=1;   // 只缩小不放大，避免大屏上画布发虚
+      document.body.style.padding='0';
+      document.body.style.overflow='hidden';
+      stage.style.height=vh+'px';
+      stage.style.minHeight='0';
+      stage.style.alignItems='center';
+      stage.style.justifyContent='center';
+      stage.style.flexWrap='nowrap';
+      stage.style.gap='0';
+      stage.style.padding='0';
+      phone.style.transform='scale('+s+')';
+      phone.style.transformOrigin='center center';
+      phone.style.margin='0';
+    }
+    window.addEventListener('resize',fitStage);
+    window.addEventListener('orientationchange',fitStage);
+    fitStage();
+  })();
   // 开局面背景城（2026-11-23 用户要求）：未点开始前先展示一座实时渲染的繁华示例城
   // （#demo=1 仍走原 loadDemo 演示城，供截图/回归用）
   if(!params.demo){

@@ -90,6 +90,25 @@
   .dl-btn:active { transform: scale(.97); }
   .mirror { font-size: 12px; color: rgba(232,246,255,.4); }
   .mirror a { color: rgba(93,240,255,.7); border-bottom: 1px dashed rgba(93,240,255,.4); }
+  .dl-btn.ghost {
+    background: rgba(255,255,255,.08); color: #5df0ff;
+    border: 1px solid rgba(93,240,255,.45); box-shadow: none;
+  }
+  .dl-btn.ghost:hover { box-shadow: 0 0 24px rgba(0,229,255,.25); }
+
+  /* ===== 右上角「项目页」入口 ===== */
+  .proj-btn {
+    position: fixed; top: 16px; right: 16px; z-index: 50;
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 9px 18px; border-radius: 999px; font-size: 13px; font-weight: 600;
+    color: #b39dff; background: rgba(123,92,255,.14);
+    border: 1px solid rgba(123,92,255,.5);
+    -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+    transition: transform .15s, box-shadow .2s, color .2s;
+  }
+  .proj-btn:hover { color: #d3c6ff; box-shadow: 0 0 26px rgba(123,92,255,.4); transform: translateY(-1px); }
+  .proj-btn:active { transform: scale(.96); }
+  @media (max-width: 560px) { .proj-btn { top: 10px; right: 10px; padding: 7px 14px; font-size: 12px; } }
 
   /* ===== 版本更新日志 ===== */
   .log-toggle {
@@ -225,6 +244,7 @@
 </style>
 </head>
 <body>
+  <a class="proj-btn" href="projects.html">🗂 项目页</a>
   <div class="wrap">
     <header>
       <div class="logo">
@@ -534,7 +554,7 @@ fetch('files.json?t=' + Date.now())
             ${f.pageOnly
               ? `<a class="dl-btn" href="${f.file}" target="_blank" rel="noopener">${f.cta || '📄 查看详情'}</a>`
               : (f.androidOnly && f.apkMirror
-                ? `<a class="dl-btn" href="${f.apkMirror}" download>⬇ 安卓下载</a>`
+                ? `<a class="dl-btn" href="${f.apkMirror}" download>⬇ 安卓下载</a>${f.iosUrl ? `<a class="dl-btn ghost" href="${f.iosUrl}" target="_blank" rel="noopener">📱 iPhone 网页版</a>` : ''}`
                 : `<a class="dl-btn" href="javascript:void(0)">📲 获取应用</a>`)}
           </div>
           ${f.notice ? `<div class="install-tip">${f.notice}</div>` : ''}

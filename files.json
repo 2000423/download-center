@@ -8,16 +8,26 @@
       "name": "一局之城",
       "type": "apk",
       "icon": "🏙️",
-      "version": "0.1.0",
-      "size": "2.6 MB · Android 8.0+",
+      "version": "0.1.1",
+      "size": "2.6 MB · Android 8.0+ / iPhone 网页版",
       "date": "2026-11-26",
-      "tags": ["Android", "游戏", "新品"],
-      "platforms": "仅 Android",
-      "desc": "横屏单机城建游戏，对标《城市：天际线》观感：50×50 格子、四边高速路网、20 余种建筑分区建造。WebGL 3D 自由视角，轨道相机、双指缩放拖动、长按旋转，昼夜 5 分钟一轮流转。RCI+O 四类需求独立模拟，警局、消防、学校、医院逐项覆盖，车流与行人实时穿梭。透支建造：资金不足也能放，金币可为负（破产锁 -10000）。每局都是一座新城市，退出即落幕。纯离线单机，不联网、无广告、零权限。",
+      "tags": ["Android", "iPhone", "游戏", "新品"],
+      "platforms": "Android & iPhone",
+      "desc": "横屏单机城建游戏，对标《城市：天际线》观感：50×50 格子、四边高速路网、20 余种建筑分区建造。WebGL 3D 自由视角，轨道相机、双指缩放拖动、长按旋转，昼夜 5 分钟一轮流转。RCI+O 四类需求独立模拟，警局、消防、学校、医院逐项覆盖，车流与行人实时穿梭。透支建造：资金不足也能放，金币可为负（破产锁 -10000）。每局都是一座新城市，退出即落幕。安卓装 APK，iPhone 直接打开网页版玩，纯离线单机、零权限。",
       "file": "yijuzhicheng/",
-      "apkMirror": "files/yijuzhicheng-v0.1.0.apk",
+      "apkMirror": "files/yijuzhicheng-v0.1.1.apk",
+      "iosUrl": "yijuzhicheng/play/?clean=1",
       "androidOnly": true,
       "changelog": [
+        {
+          "version": "0.1.1",
+          "date": "2026-11-26",
+          "notes": [
+            "修复：3D 双指缩放方向反了——现在手指张开拉近、捏合拉远，与直觉一致",
+            "修复：手机横屏画面超出屏幕要来回滚动——现在画面整体等比缩放，完整装进一屏",
+            "新增 iPhone / iPad 网页版：Safari 打开即玩，可「添加到主屏幕」当 App 用"
+          ]
+        },
         {
           "version": "0.1.0",
           "date": "2026-11-26",

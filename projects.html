@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>项目页 · 应用下载中心</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 0; background: #050814; color: #e8f6ff;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    background-image:
+      radial-gradient(900px 420px at 50% -10%, rgba(0,229,255,.10) 0%, transparent 60%),
+      radial-gradient(700px 380px at 85% 110%, rgba(123,92,255,.10) 0%, transparent 60%);
+  }
+  a { color: inherit; text-decoration: none; }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 48px 20px 80px; }
+
+  .proj-btn {
+    position: fixed; top: 16px; right: 16px; z-index: 50;
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 9px 18px; border-radius: 999px; font-size: 13px; font-weight: 600;
+    color: #b39dff; background: rgba(123,92,255,.14);
+    border: 1px solid rgba(123,92,255,.5);
+    -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+    transition: transform .15s, box-shadow .2s, color .2s;
+  }
+  .proj-btn:hover { color: #d3c6ff; box-shadow: 0 0 26px rgba(123,92,255,.4); transform: translateY(-1px); }
+  .proj-btn:active { transform: scale(.96); }
+
+  header { text-align: center; margin-bottom: 36px; }
+  header h1 {
+    font-size: 26px; font-weight: 800; letter-spacing: 2px;
+    color: #b39dff; text-shadow: 0 0 16px rgba(123,92,255,.6), 0 0 50px rgba(123,92,255,.3);
+  }
+  header .sub { margin-top: 10px; font-size: 14px; color: rgba(232,246,255,.55); }
+
+  .proj-card {
+    display: flex; gap: 16px; align-items: flex-start;
+    background: rgba(255,255,255,.06);
+    -webkit-backdrop-filter: blur(24px) saturate(160%); backdrop-filter: blur(24px) saturate(160%);
+    border: 1px solid rgba(255,255,255,.14); border-radius: 22px;
+    padding: 22px; margin-bottom: 18px;
+    box-shadow: 0 10px 36px rgba(0,0,0,.35);
+    transition: transform .2s, border-color .2s;
+  }
+  .proj-card:hover { transform: translateY(-3px); border-color: rgba(179,157,255,.45); }
+  .icon {
+    flex: none; width: 60px; height: 60px; border-radius: 16px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 26px;
+    background: linear-gradient(135deg, #00e5ff, #7b5cff);
+    box-shadow: 0 0 26px rgba(0,229,255,.3);
+  }
+  .info { flex: 1; min-width: 0; }
+  .name-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .fname { font-size: 18px; font-weight: 700; }
+  .ver { font-size: 11px; padding: 3px 9px; border-radius: 999px; background: rgba(0,229,255,.14); border: 1px solid rgba(0,229,255,.45); color: #5df0ff; }
+  .tag { font-size: 11px; padding: 3px 9px; border-radius: 999px; background: rgba(140,110,255,.13); border: 1px solid rgba(140,110,255,.4); color: #b39dff; }
+  .desc { margin-top: 8px; font-size: 13px; line-height: 1.7; color: rgba(232,246,255,.7); }
+  .go {
+    margin-top: 12px; display: inline-flex; align-items: center; gap: 6px;
+    font-size: 13px; font-weight: 700; color: #5df0ff;
+    padding: 9px 20px; border-radius: 999px;
+    background: rgba(0,229,255,.10); border: 1px solid rgba(0,229,255,.4);
+    transition: box-shadow .2s, background .2s;
+  }
+  .proj-card:hover .go { box-shadow: 0 0 24px rgba(0,229,255,.25); background: rgba(0,229,255,.16); }
+  .loading, .empty { text-align: center; padding: 60px 0; font-size: 14px; color: rgba(232,246,255,.4); }
+  footer { text-align: center; margin-top: 46px; font-size: 12px; color: rgba(232,246,255,.4); }
+  footer a { color: rgba(93,240,255,.75); }
+</style>
+</head>
+<body>
+  <a class="proj-btn" href="index.html">← 下载中心</a>
+  <div class="wrap">
+    <header>
+      <h1>项目页</h1>
+      <div class="sub">这里是我做的每一个应用，点进卡片查看详细介绍、玩法说明与更新日志</div>
+    </header>
+    <main id="list"><div class="loading">加载中…</div></main>
+    <footer>Powered by GitHub Pages · <a href="index.html">返回下载中心</a></footer>
+  </div>
+
+<script>
+fetch('files.json?t=' + Date.now())
+  .then(r => r.json())
+  .then(data => {
+    const list = document.getElementById('list');
+    const files = data.files || [];
+    if (!files.length) { list.innerHTML = '<div class="empty">暂无应用</div>'; return; }
+    list.innerHTML = files.map(f => {
+      const tags = (f.tags || []).map(t => `<span class="tag">${t}</span>`).join('');
+      return `
+      <a class="proj-card" href="${f.file}" target="_blank" rel="noopener">
+        <div class="icon">${f.icon || 'APP'}</div>
+        <div class="info">
+          <div class="name-row">
+            <span class="fname">${f.name}</span>
+            <span class="ver">v${f.version}</span>
+            ${tags}
+          </div>
+          <div class="desc">${f.desc || ''}</div>
+          <span class="go">进入项目页 →</span>
+        </div>
+      </a>`;
+    }).join('');
+  })
+  .catch(() => { document.getElementById('list').innerHTML = '<div class="empty">加载失败，请刷新重试</div>'; });
+</script>
+</body>
+</html>

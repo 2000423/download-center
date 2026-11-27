@@ -3,263 +3,349 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="theme-color" content="#050814">
+<meta name="theme-color" content="#f7f4ee">
 <title>应用下载中心</title>
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent;
-      -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none;
-      -webkit-touch-callout: none; }
+  /* ===== 柔和轻质感 Soft UI —— 2026-11-27 全站改版 ===== */
+  :root {
+    --bg: #f7f4ee;
+    --ink: #3d414c;
+    --ink-soft: #777d8a;
+    --ink-faint: #a2a7b2;
+    --card: rgba(255,255,255,.82);
+    --line: rgba(255,255,255,.95);
+    --mint: #86d4cf;
+    --mint-deep: #4e9d99;
+    --peach: #f3b88f;
+    --peach-deep: #c47f55;
+    --lilac: #c6b8e8;
+    --sky: #a9cbe8;
+    --shadow: 0 18px 44px rgba(96,88,112,.10), 0 3px 10px rgba(96,88,112,.05), inset 0 1px 0 rgba(255,255,255,.9);
+    --shadow-sm: 0 8px 22px rgba(96,88,112,.09), inset 0 1px 0 rgba(255,255,255,.9);
+    --radius: 26px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   body {
     font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei", sans-serif;
-    background: radial-gradient(ellipse at 50% -10%, #0d1638 0%, #050814 55%, #03040c 100%);
-    color: #e8f6ff; min-height: 100vh;
-    -webkit-user-select: none; user-select: none;
+    color: var(--ink); min-height: 100vh; line-height: 1.6;
+    background: linear-gradient(135deg, #faf7f1 0%, #f5f3f9 52%, #fdf5f0 100%);
+    position: relative; overflow-x: hidden;
   }
-  .fb-field input, .fb-field textarea {
-    -webkit-user-select: text !important; user-select: text !important;
-    -webkit-touch-callout: default;
-  }
+  /* 背景弥散色团：淡黄 / 淡粉 / 淡蓝，极轻，不抢内容 */
+  body::before, body::after { content: ''; position: fixed; z-index: -1; pointer-events: none; border-radius: 50%; filter: blur(90px); opacity: .55; }
+  body::before { width: 520px; height: 520px; top: -190px; left: -130px; background: #ffe7b7; box-shadow: 1100px 620px 0 60px #ffd9e2; }
+  body::after { width: 620px; height: 620px; bottom: -260px; right: -180px; background: #d3e8f7; }
   a { color: inherit; text-decoration: none; }
+  input, textarea, button { font-family: inherit; }
+  .fb-field input, .fb-field textarea { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
 
-  .wrap { max-width: 720px; margin: 0 auto; padding: 48px 20px 80px; position: relative; }
+  .wrap { max-width: 1160px; margin: 0 auto; padding: 30px 28px 70px; position: relative; }
 
-  header { text-align: center; margin-bottom: 40px; }
-  .logo {
-    width: 72px; height: 72px; margin: 0 auto 18px; border-radius: 20px;
-    background: linear-gradient(135deg, #0b1a3a, #050814);
-    border: 1px solid rgba(93,240,255,.35); box-shadow: 0 0 40px rgba(0,229,255,.25);
+  /* ===== 顶部导航（随页面滚动，不固定在屏幕） ===== */
+  .topbar {
+    display: flex; align-items: center; gap: 18px;
+    padding: 14px 18px; margin-bottom: 30px;
+    background: var(--card); border: 1px solid var(--line); border-radius: 22px;
+    box-shadow: var(--shadow-sm); -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px);
+  }
+  .brand { display: flex; align-items: center; gap: 12px; flex: none; }
+  .brand-mark {
+    width: 42px; height: 42px; border-radius: 14px; flex: none;
+    background: linear-gradient(135deg, #a8e4df, #cfe7dd 55%, #f8d9bd);
+    box-shadow: 0 6px 16px rgba(110,180,175,.26), inset 0 1px 0 rgba(255,255,255,.9);
     display: flex; align-items: center; justify-content: center;
+    font-size: 21px;
   }
-  .logo svg { width: 40px; height: 40px; }
-  h1 {
-    font-size: 26px; font-weight: 800; letter-spacing: 2px;
-    color: #5df0ff; text-shadow: 0 0 16px rgba(93,240,255,.7), 0 0 50px rgba(93,240,255,.3);
+  .brand b { font-size: 16px; font-weight: 700; letter-spacing: .5px; }
+  .brand small { display: block; font-size: 11px; color: var(--ink-faint); font-weight: 400; }
+  .nav-links { display: flex; align-items: center; gap: 6px; margin-left: 10px; }
+  .nav-link {
+    padding: 8px 15px; border-radius: 999px; font-size: 13px; color: var(--ink-soft);
+    transition: background .2s, color .2s; white-space: nowrap;
   }
-  .sub { margin-top: 10px; font-size: 14px; color: rgba(232,246,255,.55); }
-
-  .stats { display: flex; justify-content: center; gap: 26px; margin-top: 18px; font-size: 12px; color: rgba(232,246,255,.4); }
-  .stats b { color: #b39dff; font-size: 15px; margin-right: 4px; }
-
-  /* ===== 滚动入场动画 ===== */
-  .reveal { opacity: 0; transform: translateY(18px); transition: opacity .65s ease, transform .65s ease; }
-  .reveal.on { opacity: 1; transform: none; }
-  @media (prefers-reduced-motion: reduce) {
-    .reveal { opacity: 1; transform: none; transition: none; }
+  .nav-link:hover, .nav-link.on { background: rgba(134,212,207,.14); color: var(--mint-deep); }
+  .search {
+    margin-left: auto; display: flex; align-items: center; gap: 9px;
+    width: 260px; padding: 10px 16px; border-radius: 999px;
+    background: rgba(255,255,255,.7); border: 1px solid rgba(255,255,255,.95);
+    box-shadow: inset 0 2px 6px rgba(96,88,112,.06); transition: box-shadow .2s, border-color .2s;
   }
+  .search:focus-within { border-color: rgba(134,212,207,.75); box-shadow: 0 0 0 4px rgba(134,212,207,.13); }
+  .search span { font-size: 15px; color: var(--ink-faint); }
+  .search input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font-size: 13px; color: var(--ink); }
+  .search input::placeholder { color: var(--ink-faint); }
+  /* 兼容旧入口：项目页按钮在导航右侧 */
+  .proj-btn {
+    flex: none; padding: 9px 17px; border-radius: 999px; font-size: 13px; font-weight: 600;
+    color: var(--peach-deep); background: rgba(243,184,143,.16);
+    border: 1px solid rgba(243,184,143,.38); box-shadow: var(--shadow-sm);
+    transition: transform .15s, background .2s; white-space: nowrap;
+  }
+  .proj-btn:hover { background: rgba(243,184,143,.28); transform: translateY(-1px); }
+  .proj-btn:active { transform: scale(.97); }
 
-  /* ===== 发布公告栏：已移除 ===== */
+  /* ===== 头部简介 ===== */
+  header { text-align: center; margin: 8px auto 24px; }
+  h1 { font-size: 30px; font-weight: 750; letter-spacing: .5px; color: #363b46; }
+  .sub { margin-top: 8px; font-size: 14px; color: var(--ink-soft); }
+  .stats { display: flex; justify-content: center; gap: 12px; margin-top: 16px; flex-wrap: wrap; }
+  .stats span {
+    padding: 7px 16px; border-radius: 999px; font-size: 12px; color: var(--ink-soft);
+    background: rgba(255,255,255,.72); border: 1px solid var(--line); box-shadow: var(--shadow-sm);
+  }
+  .stats b { color: var(--mint-deep); font-size: 14px; margin-right: 4px; }
 
+  /* ===== 分类标签 ===== */
+  .cats { display: flex; justify-content: center; gap: 10px; margin-bottom: 26px; flex-wrap: wrap; }
+  .cat {
+    padding: 9px 21px; border-radius: 999px; font-size: 13px; color: var(--ink-soft); cursor: pointer;
+    background: rgba(255,255,255,.72); border: 1px solid var(--line); box-shadow: var(--shadow-sm);
+    transition: transform .15s, color .2s, background .2s;
+  }
+  .cat:hover { transform: translateY(-1px); }
+  .cat.on { color: #3a7d78; background: linear-gradient(135deg, #d5f0ec, #e8f4ee); border-color: rgba(134,212,207,.5); }
+
+  /* ===== 卡片网格：电脑 Bento 布局 / 手机单列居中 ===== */
+  .grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 22px; }
   .file-card {
-    background: rgba(255,255,255,.06);
-    -webkit-backdrop-filter: blur(24px) saturate(160%); backdrop-filter: blur(24px) saturate(160%);
-    border: 1px solid rgba(255,255,255,.14); border-radius: 22px;
-    padding: 24px; margin-bottom: 20px;
-    box-shadow: 0 10px 36px rgba(0,0,0,.35);
-    display: flex; gap: 18px; align-items: flex-start;
-    transition: transform .2s, border-color .2s;
+    grid-column: span 1; min-width: 0;
+    background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 26px; box-shadow: var(--shadow); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
+    display: flex; flex-direction: column; gap: 14px;
+    transition: transform .22s ease, box-shadow .22s ease;
   }
-  .file-card:hover { transform: translateY(-3px); border-color: rgba(0,229,255,.4); }
+  .file-card:hover { transform: translateY(-4px); box-shadow: 0 26px 54px rgba(96,88,112,.14), 0 5px 14px rgba(96,88,112,.06), inset 0 1px 0 rgba(255,255,255,.9); }
+  .file-card.featured { grid-column: span 2; display: grid; grid-template-columns: 92px 1fr 150px; align-items: start; gap: 24px; }
+  .file-card.hide, .deco-card.hide { display: none; }
   .icon {
-    flex: none; width: 64px; height: 64px; border-radius: 16px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 24px; font-weight: 800; color: #06121f;
-    background: linear-gradient(135deg, #00e5ff, #7b5cff);
-    box-shadow: 0 0 26px rgba(0,229,255,.35);
+    flex: none; width: 62px; height: 62px; border-radius: 19px;
+    display: flex; align-items: center; justify-content: center; font-size: 28px;
+    box-shadow: 0 10px 22px rgba(96,88,112,.13), inset 0 1px 0 rgba(255,255,255,.8);
   }
-  .icon.exe { background: linear-gradient(135deg, #7b5cff, #ff5c8a); box-shadow: 0 0 26px rgba(123,92,255,.35); }
-  .icon.web { background: linear-gradient(135deg, #5df0ff, #7fe6a4); box-shadow: 0 0 26px rgba(127,230,164,.35); }
-  .info { flex: 1; min-width: 0; }
+  .file-card.featured .icon { width: 92px; height: 92px; font-size: 42px; border-radius: 26px; }
+  .icon.mint { background: linear-gradient(135deg, #c9efe9, #e6f4ec); }
+  .icon.peach { background: linear-gradient(135deg, #fbe0c8, #f9eee2); }
+  .icon.lilac { background: linear-gradient(135deg, #e3daf5, #f2ecfa); }
+  .icon.sky { background: linear-gradient(135deg, #d5e9f7, #edf4fa); }
+  .info { min-width: 0; }
   .name-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-  .fname { font-size: 19px; font-weight: 700; }
+  .fname { font-size: 19px; font-weight: 700; color: #383d48; }
   .ver {
-    font-size: 11px; padding: 3px 9px; border-radius: 999px;
-    background: rgba(0,229,255,.14); border: 1px solid rgba(0,229,255,.45); color: #5df0ff;
+    font-size: 11px; padding: 3px 10px; border-radius: 999px;
+    background: rgba(134,212,207,.15); color: var(--mint-deep);
   }
-  .tag { font-size: 11px; padding: 3px 9px; border-radius: 999px; background: rgba(140,110,255,.13); border: 1px solid rgba(140,110,255,.4); color: #b39dff; }
-  .meta { margin-top: 7px; font-size: 12px; color: rgba(232,246,255,.45); }
-  .desc { margin-top: 10px; font-size: 13.5px; line-height: 1.75; color: rgba(232,246,255,.75); }
-  .install-tip { margin-top: 8px; font-size: 12px; color: rgba(255,215,106,.75); }
+  .tag {
+    font-size: 11px; padding: 3px 10px; border-radius: 999px;
+    background: rgba(198,184,232,.15); color: #7e72a3;
+  }
+  .meta { margin-top: 6px; font-size: 12px; color: var(--ink-faint); }
+  .desc {
+    margin-top: 10px; font-size: 13.5px; line-height: 1.8; color: var(--ink-soft);
+    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .file-card.featured .desc { -webkit-line-clamp: 4; font-size: 14px; }
+  .install-tip { margin-top: 8px; font-size: 12px; color: var(--peach-deep); }
   .dl-row { margin-top: 16px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
   .dl-btn {
     display: inline-flex; align-items: center; gap: 8px;
-    padding: 11px 26px; border-radius: 999px; font-size: 14px; font-weight: 700; color: #06121f;
-    background: linear-gradient(90deg, #00e5ff, #7b5cff);
-    box-shadow: 0 0 26px rgba(0,229,255,.4); cursor: pointer; transition: transform .15s, box-shadow .2s;
+    padding: 11px 25px; border-radius: 999px; font-size: 13.5px; font-weight: 700; color: #356f6b;
+    background: linear-gradient(135deg, #a5e2dc, #cdece2);
+    box-shadow: 0 8px 18px rgba(110,182,176,.26), inset 0 1px 0 rgba(255,255,255,.8);
+    cursor: pointer; transition: transform .15s, box-shadow .2s;
   }
-  .dl-btn:hover { transform: translateY(-1px); box-shadow: 0 0 36px rgba(0,229,255,.6); }
+  .dl-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 24px rgba(110,182,176,.34); }
   .dl-btn:active { transform: scale(.97); }
-  .mirror { font-size: 12px; color: rgba(232,246,255,.4); }
-  .mirror a { color: rgba(93,240,255,.7); border-bottom: 1px dashed rgba(93,240,255,.4); }
+  .dl-btn.orange { color: #9a613c; background: linear-gradient(135deg, #f8d4b5, #fbe6cf); box-shadow: 0 8px 18px rgba(214,153,112,.24), inset 0 1px 0 rgba(255,255,255,.8); }
   .dl-btn.ghost {
-    background: rgba(255,255,255,.08); color: #5df0ff;
-    border: 1px solid rgba(93,240,255,.45); box-shadow: none;
+    color: var(--ink-soft); background: rgba(255,255,255,.8);
+    border: 1px solid rgba(255,255,255,.95); box-shadow: var(--shadow-sm);
   }
-  .dl-btn.ghost:hover { box-shadow: 0 0 24px rgba(0,229,255,.25); }
-
-  /* ===== 页面右上角「项目页」入口（随页面滚动，不钉在屏幕上）===== */
-  .proj-btn {
-    position: absolute; top: 52px; right: 20px; z-index: 50;
-    display: inline-flex; align-items: center; gap: 7px;
-    padding: 9px 18px; border-radius: 999px; font-size: 13px; font-weight: 600;
-    color: #b39dff; background: rgba(123,92,255,.14);
-    border: 1px solid rgba(123,92,255,.5);
-    -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
-    transition: transform .15s, box-shadow .2s, color .2s;
+  /* 主卡右侧柔和装饰圆 */
+  .feature-art { position: relative; height: 150px; border-radius: 22px; overflow: hidden; background: linear-gradient(150deg, #f4eee6, #e8f2ee 60%, #f7e8dc); box-shadow: inset 0 1px 0 rgba(255,255,255,.8); }
+  .feature-art .orb {
+    position: absolute; width: 96px; height: 96px; border-radius: 50%; left: 50%; top: 50%; transform: translate(-50%,-50%);
+    background: radial-gradient(circle at 35% 30%, #fff0d4 0%, #f6cda0 45%, #efb98e 100%);
+    box-shadow: 0 12px 30px rgba(214,153,112,.28), inset -8px -8px 18px rgba(180,120,80,.12);
   }
-  .proj-btn:hover { color: #d3c6ff; box-shadow: 0 0 26px rgba(123,92,255,.4); transform: translateY(-1px); }
-  .proj-btn:active { transform: scale(.96); }
-  @media (max-width: 560px) { .proj-btn { top: 14px; right: 14px; padding: 7px 14px; font-size: 12px; } }
+  .feature-art .cap { position: absolute; bottom: 10px; left: 0; right: 0; text-align: center; font-size: 11px; color: #9b8b7d; letter-spacing: 1px; }
+  /* 填空装饰卡（模仿参考图里的小组件） */
+  .deco-card {
+    background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 26px; box-shadow: var(--shadow); display: flex; flex-direction: column; justify-content: space-between; gap: 14px;
+  }
+  .deco-card .big-sun {
+    width: 84px; height: 84px; border-radius: 50%; align-self: flex-end;
+    background: radial-gradient(circle at 34% 30%, #fff4d9, #f6d2a6 58%, #efbf95);
+    box-shadow: 0 12px 26px rgba(214,153,112,.24), inset -6px -6px 16px rgba(190,135,90,.12);
+  }
+  .deco-card b { font-size: 15px; color: #4a4f5a; }
+  .deco-card p { font-size: 12.5px; color: var(--ink-faint); margin-top: 4px; line-height: 1.7; }
 
-  /* ===== 版本更新日志 ===== */
+  /* ===== 更新日志 ===== */
   .log-toggle {
-    margin-top: 14px; display: inline-flex; align-items: center; gap: 6px;
-    font-size: 12.5px; font-weight: 600; color: rgba(179,157,255,.9); cursor: pointer;
-    padding: 6px 15px; border-radius: 999px;
-    background: rgba(140,110,255,.09); border: 1px solid rgba(140,110,255,.35);
-    transition: background .2s; -webkit-user-select: none; user-select: none;
+    margin-top: 12px; display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12px; color: #7e72a3; cursor: pointer; padding: 6px 14px; border-radius: 999px;
+    background: rgba(198,184,232,.12); border: 1px solid rgba(198,184,232,.25);
+    transition: background .2s;
   }
-  .log-toggle:hover { background: rgba(140,110,255,.18); }
+  .log-toggle:hover { background: rgba(198,184,232,.22); }
   .log-toggle .arr { display: inline-block; transition: transform .25s; font-size: 10px; }
   .log-toggle.open .arr { transform: rotate(180deg); }
-  .log-box { display: none; margin-top: 14px; border-top: 1px dashed rgba(255,255,255,.16); padding-top: 14px; }
+  .log-box { display: none; margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(96,88,112,.1); }
   .log-box.open { display: block; animation: logIn .3s ease; }
-  @keyframes logIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
-  .log-item { display: flex; gap: 12px; }
-  .log-item + .log-item { margin-top: 13px; }
-  .log-ver {
-    flex: none; height: fit-content; font-size: 11px; padding: 3px 9px; border-radius: 999px;
-    background: rgba(0,229,255,.12); border: 1px solid rgba(0,229,255,.4); color: #5df0ff;
-  }
-  .log-info { flex: 1; min-width: 0; }
-  .log-date { font-size: 11px; color: rgba(232,246,255,.35); margin-bottom: 4px; }
-  .log-info ul { list-style: none; }
-  .log-info li { position: relative; padding-left: 14px; font-size: 12.5px; line-height: 1.7; color: rgba(232,246,255,.6); }
-  .log-info li + li { margin-top: 2px; }
-  .log-info li::before {
-    content: ''; position: absolute; left: 2px; top: 9px;
-    width: 5px; height: 5px; border-radius: 50%; background: rgba(93,240,255,.55);
-  }
+  @keyframes logIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: none; } }
+  .log-item + .log-item { margin-top: 11px; }
+  .log-ver { display: inline-block; font-size: 11px; padding: 2px 9px; border-radius: 999px; background: rgba(134,212,207,.14); color: var(--mint-deep); }
+  .log-date { display: inline-block; margin-left: 8px; font-size: 11px; color: var(--ink-faint); }
+  .log-info ul { list-style: none; margin-top: 4px; }
+  .log-info li { position: relative; padding-left: 13px; font-size: 12px; line-height: 1.75; color: var(--ink-soft); }
+  .log-info li::before { content: ''; position: absolute; left: 2px; top: 9px; width: 5px; height: 5px; border-radius: 50%; background: var(--mint); }
 
-  footer { margin-top: 50px; text-align: center; font-size: 12px; color: rgba(232,246,255,.3); line-height: 2; }
-  footer a { color: rgba(93,240,255,.55); }
+  /* ===== 页脚 ===== */
+  footer { margin-top: 44px; text-align: center; font-size: 12px; color: var(--ink-faint); line-height: 2.1; }
   .fb-btn {
-    display: inline-flex; align-items: center; gap: 7px;
-    margin-bottom: 14px; padding: 10px 24px; border-radius: 999px;
-    font-size: 13px; font-weight: 600; color: rgba(232,246,255,.8);
-    background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.15);
-    transition: border-color .2s, background .2s, transform .15s;
-    cursor: pointer;
+    display: inline-flex; align-items: center; gap: 7px; margin-bottom: 12px; padding: 10px 22px;
+    border-radius: 999px; font-size: 13px; color: var(--ink-soft);
+    background: rgba(255,255,255,.78); border: 1px solid var(--line); box-shadow: var(--shadow-sm);
+    cursor: pointer; transition: transform .15s, color .2s;
   }
-  .fb-btn:hover { border-color: rgba(0,229,255,.5); background: rgba(0,229,255,.08); transform: translateY(-1px); }
+  .fb-btn:hover { color: var(--mint-deep); transform: translateY(-1px); }
 
-  /* ===== 反馈表单弹窗 ===== */
-  .fb-field { margin-top: 16px; }
-  .fb-field label { display: block; font-size: 12px; color: rgba(232,246,255,.5); margin-bottom: 6px; }
-  .fb-field input, .fb-field textarea {
-    width: 100%; padding: 12px 14px; border-radius: 14px;
-    font-family: inherit; font-size: 14px; color: #e8f6ff;
-    background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.14);
-    outline: none; transition: border-color .2s, background .2s;
-    resize: none; -webkit-appearance: none;
-  }
-  .fb-field input:focus, .fb-field textarea:focus {
-    border-color: rgba(0,229,255,.55); background: rgba(0,229,255,.06);
-  }
-  .fb-field input::placeholder, .fb-field textarea::placeholder { color: rgba(232,246,255,.28); }
-  .fb-submit {
-    margin-top: 18px; width: 100%; padding: 13px; border-radius: 14px;
-    font-family: inherit; font-size: 14.5px; font-weight: 700; color: #06121f;
-    background: linear-gradient(90deg, #00e5ff, #7b5cff);
-    border: none; cursor: pointer; box-shadow: 0 0 24px rgba(0,229,255,.35);
-    transition: transform .15s, opacity .2s;
-  }
-  .fb-submit:hover { transform: translateY(-1px); }
-  .fb-submit:active { transform: scale(.98); }
-  .fb-submit:disabled { opacity: .55; cursor: default; transform: none; }
-  .fb-msg { margin-top: 10px; font-size: 12px; text-align: center; min-height: 16px; }
-  .fb-msg.err { color: #ff8a8a; }
-  .fb-msg.ok { color: #7fe6a4; }
-
-  .empty { text-align: center; padding: 70px 0; color: rgba(232,246,255,.4); font-size: 14px; }
-  .loading { text-align: center; padding: 70px 0; color: rgba(232,246,255,.4); font-size: 14px; }
-
-  /* ===== 选择系统弹窗 ===== */
+  /* ===== 弹窗（系统选择 / 反馈） ===== */
   .modal-mask {
     position: fixed; inset: 0; z-index: 100; display: none;
-    background: rgba(3,4,12,.6);
-    -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+    background: rgba(58,52,70,.26); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
     align-items: center; justify-content: center; padding: 24px;
   }
   .modal-mask.show { display: flex; animation: fadeIn .22s ease; }
   @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
   .modal {
-    width: 100%; max-width: 420px;
-    background: rgba(20,28,58,.55);
-    -webkit-backdrop-filter: blur(30px) saturate(170%); backdrop-filter: blur(30px) saturate(170%);
-    border: 1px solid rgba(255,255,255,.16); border-radius: 26px;
-    padding: 28px 24px 22px;
-    box-shadow: 0 24px 70px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.12);
+    width: 100%; max-width: 420px; background: #fffdfa;
+    border: 1px solid rgba(255,255,255,.95); border-radius: 28px; padding: 28px 24px 22px;
+    box-shadow: 0 30px 70px rgba(80,70,100,.18), inset 0 1px 0 rgba(255,255,255,.9);
     animation: popIn .28s cubic-bezier(.34,1.56,.64,1);
   }
-  @keyframes popIn { from { transform: scale(.85) translateY(14px); opacity: 0; } to { transform: scale(1) translateY(0); opacity: 1; } }
-  .modal h3 { text-align: center; font-size: 18px; font-weight: 800; color: #e8f6ff; text-shadow: 0 0 14px rgba(93,240,255,.5); }
-  .modal .m-sub { text-align: center; margin-top: 6px; font-size: 12.5px; color: rgba(232,246,255,.5); }
+  @keyframes popIn { from { transform: scale(.9) translateY(12px); opacity: 0; } to { transform: scale(1) translateY(0); opacity: 1; } }
+  .modal h3 { text-align: center; font-size: 18px; font-weight: 700; color: #3c414c; }
+  .modal .m-sub { text-align: center; margin-top: 6px; font-size: 12.5px; color: var(--ink-soft); }
   .os-opt {
-    display: flex; align-items: center; gap: 14px; margin-top: 16px;
-    padding: 16px 18px; border-radius: 18px; cursor: pointer;
-    background: rgba(255,255,255,.05);
-    border: 1px solid rgba(255,255,255,.12);
+    display: flex; align-items: center; gap: 14px; margin-top: 16px; padding: 16px 18px;
+    border-radius: 18px; cursor: pointer; background: rgba(247,245,240,.85);
+    border: 1px solid rgba(255,255,255,.95); box-shadow: var(--shadow-sm);
     transition: transform .15s, border-color .2s, background .2s;
-    -webkit-user-select: none; user-select: none;
   }
-  .os-opt:hover { border-color: rgba(0,229,255,.45); background: rgba(0,229,255,.07); }
-  .os-opt:active { transform: scale(.97); }
+  .os-opt:hover { border-color: rgba(134,212,207,.7); background: #f2faf7; }
+  .os-opt:active { transform: scale(.98); }
   .os-opt .os-ico {
-    flex: none; width: 46px; height: 46px; border-radius: 13px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 13px; font-weight: 800; color: #06121f;
+    flex: none; width: 46px; height: 46px; border-radius: 14px;
+    display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: #fff;
   }
-  .os-opt.android .os-ico { background: linear-gradient(135deg, #00e5ff, #4d8bff); box-shadow: 0 0 18px rgba(0,229,255,.4); }
-  .os-opt.ios .os-ico { background: linear-gradient(135deg, #5df0ff, #7fe6a4); box-shadow: 0 0 18px rgba(127,230,164,.35); }
-  .os-opt .os-txt b { display: block; font-size: 15px; color: #e8f6ff; }
-  .os-opt .os-txt span { display: block; margin-top: 3px; font-size: 12px; color: rgba(232,246,255,.5); line-height: 1.5; }
-  .os-opt .os-txt .os-note { display: block; margin-top: 4px; font-size: 11px; font-style: normal; color: rgba(232,246,255,.35); line-height: 1.5; }
-  .os-opt.recommend { border-color: rgba(0,229,255,.6); background: rgba(0,229,255,.09); }
-  .os-opt.recommend::after { content: '推荐'; margin-left: auto; font-size: 11px; padding: 3px 9px; border-radius: 999px; background: rgba(0,229,255,.16); border: 1px solid rgba(0,229,255,.5); color: #5df0ff; flex: none; }
+  .os-opt.android .os-ico { background: linear-gradient(135deg, #9bd9d3, #7fc3bc); }
+  .os-opt.ios .os-ico { background: linear-gradient(135deg, #cfc4eb, #ab9bd8); }
+  .os-opt .os-txt b { display: block; font-size: 14px; color: #3c414c; }
+  .os-opt .os-txt span { display: block; margin-top: 3px; font-size: 12px; color: var(--ink-soft); line-height: 1.55; }
+  .os-opt .os-txt .os-note { display: block; margin-top: 4px; font-size: 11px; font-style: normal; color: var(--ink-faint); line-height: 1.5; }
+  .os-opt.recommend { border-color: rgba(134,212,207,.75); background: #f1faf7; }
+  .os-opt.recommend::after { content: '推荐'; margin-left: auto; font-size: 11px; padding: 3px 9px; border-radius: 999px; background: rgba(134,212,207,.2); color: var(--mint-deep); flex: none; }
   .modal-cancel {
-    margin-top: 18px; width: 100%; padding: 12px; border-radius: 14px;
-    text-align: center; font-size: 14px; font-weight: 600; cursor: pointer;
-    color: rgba(232,246,255,.65); background: rgba(255,255,255,.06);
-    border: 1px solid rgba(255,255,255,.12); transition: background .2s;
-    -webkit-user-select: none; user-select: none;
+    margin-top: 18px; width: 100%; padding: 12px; border-radius: 14px; text-align: center;
+    font-size: 13.5px; font-weight: 600; color: var(--ink-soft); cursor: pointer;
+    background: rgba(247,245,240,.9); border: 1px solid rgba(255,255,255,.95); box-shadow: var(--shadow-sm);
   }
-  .modal-cancel:hover { background: rgba(255,255,255,.1); }
-  @media (max-width: 560px) {
-    .wrap { padding-top: 34px; }
-    .file-card { padding: 20px 18px; }
-    .icon { width: 54px; height: 54px; font-size: 20px; }
+  .modal-cancel:hover { background: #f1efea; }
+  .fb-field { margin-top: 16px; }
+  .fb-field label { display: block; font-size: 12px; color: var(--ink-soft); margin-bottom: 6px; }
+  .fb-field input, .fb-field textarea {
+    width: 100%; padding: 12px 14px; border-radius: 14px; outline: none; resize: none;
+    font-size: 14px; color: var(--ink); background: rgba(247,245,240,.9);
+    border: 1px solid rgba(255,255,255,.95); box-shadow: inset 0 2px 6px rgba(96,88,112,.05);
+    -webkit-appearance: none;
+  }
+  .fb-field input:focus, .fb-field textarea:focus { border-color: rgba(134,212,207,.75); box-shadow: 0 0 0 4px rgba(134,212,207,.13); }
+  .fb-field input::placeholder, .fb-field textarea::placeholder { color: var(--ink-faint); }
+  .fb-submit {
+    margin-top: 18px; width: 100%; padding: 13px; border-radius: 14px; border: 0;
+    font-size: 14.5px; font-weight: 700; color: #356f6b; cursor: pointer;
+    background: linear-gradient(135deg, #a5e2dc, #cdece2); box-shadow: 0 8px 18px rgba(110,182,176,.26);
+    transition: transform .15s, opacity .2s;
+  }
+  .fb-submit:hover { transform: translateY(-1px); }
+  .fb-submit:disabled { opacity: .55; cursor: default; transform: none; }
+  .fb-msg { margin-top: 10px; font-size: 12px; text-align: center; min-height: 16px; }
+  .fb-msg.err { color: #c47f55; }
+  .fb-msg.ok { color: var(--mint-deep); }
+
+  .loading, .empty { text-align: center; padding: 70px 0; color: var(--ink-faint); font-size: 14px; }
+
+  /* ===== 入场动画（轻柔） ===== */
+  .reveal { opacity: 0; transform: translateY(14px); transition: opacity .6s ease, transform .6s ease; }
+  .reveal.on { opacity: 1; transform: none; }
+  @media (prefers-reduced-motion: reduce) { .reveal { opacity: 1; transform: none; transition: none; } }
+
+  /* ===== 平板 ===== */
+  @media (max-width: 980px) {
+    .wrap { max-width: 760px; padding: 24px 20px 60px; }
+    .search { width: 200px; }
+    .file-card.featured { grid-template-columns: 76px 1fr; gap: 18px; }
+    .file-card.featured .icon { width: 76px; height: 76px; font-size: 34px; }
+    .feature-art { display: none; }
+    .deco-card { display: none; }
+  }
+
+  /* ===== 手机：保持居中单列，内容排布与旧版一致 ===== */
+  @media (max-width: 720px) {
+    .wrap { max-width: 560px; padding: 18px 16px 56px; }
+    .topbar { flex-wrap: wrap; gap: 10px; padding: 13px 14px; margin-bottom: 22px; }
+    .brand { flex: 1; }
+    .brand b { font-size: 15px; }
+    .nav-links { display: none; }
+    .search { order: 3; width: 100%; margin-left: 0; }
+    .proj-btn { padding: 8px 14px; font-size: 12px; }
+    header { margin-bottom: 20px; }
+    h1 { font-size: 24px; }
+    .sub { font-size: 13px; }
+    .cats { justify-content: flex-start; flex-wrap: nowrap; overflow-x: auto; padding: 4px 2px 10px; margin-bottom: 18px; }
+    .cat { white-space: nowrap; padding: 8px 17px; font-size: 12px; }
+    .grid { display: block; }
+    .file-card, .file-card.featured {
+      display: flex; flex-direction: row; align-items: flex-start; gap: 14px;
+      padding: 20px 18px; margin-bottom: 16px; border-radius: 22px;
+    }
+    .file-card.featured .icon, .icon { width: 56px; height: 56px; font-size: 24px; border-radius: 17px; }
     .fname { font-size: 17px; }
+    .desc { -webkit-line-clamp: unset; display: block; overflow: visible; font-size: 13px; line-height: 1.75; }
+    .file-card.featured .desc { font-size: 13px; }
+    .dl-row { margin-top: 12px; }
+    .dl-btn { padding: 9px 20px; font-size: 13px; }
     .modal { padding: 24px 18px 18px; }
   }
 </style>
 </head>
 <body>
   <div class="wrap">
-  <a class="proj-btn" href="projects.html">🗂 项目页</a>
-    <header>
-      <div class="logo">
-        <svg viewBox="0 0 48 48" fill="none">
-          <circle cx="24" cy="24" r="17" stroke="url(#g)" stroke-width="3.5"/>
-          <path d="M24 14v10l7 5" stroke="#5df0ff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
-          <defs><linearGradient id="g" x1="0" y1="0" x2="48" y2="48"><stop stop-color="#00e5ff"/><stop offset="1" stop-color="#7b5cff"/></linearGradient></defs>
-        </svg>
+    <nav class="topbar">
+      <div class="brand">
+        <div class="brand-mark">◡</div>
+        <div><b id="navName">应用下载中心</b><small>简单 · 好用 · 放心</small></div>
       </div>
+      <div class="nav-links"><a class="nav-link on" href="index.html">首页</a><a class="nav-link" href="projects.html">项目页</a></div>
+      <label class="search"><span>⌕</span><input id="siteSearch" type="search" placeholder="搜索应用名称、功能…" autocomplete="off"></label>
+      <a class="proj-btn" href="projects.html">🗂 项目页</a>
+    </nav>
+
+    <header>
       <h1 id="siteName">应用下载中心</h1>
       <div class="sub" id="siteDesc"></div>
       <div class="stats"><span><b id="statCount">0</b>个应用</span><span><b id="statVer">—</b>最新版本</span></div>
     </header>
 
-    <main id="list"><div class="loading">加载中…</div></main>
+    <div class="cats" id="cats">
+      <div class="cat on" data-cat="all">全部</div>
+      <div class="cat" data-cat="游戏">游戏</div>
+      <div class="cat" data-cat="工具">工具</div>
+    </div>
+
+    <main class="grid" id="list"><div class="loading">加载中…</div></main>
 
     <footer class="reveal">
       <a class="fb-btn" id="fbBtn" href="javascript:void(0)">✉️ 反馈问题 / 提建议</a><br>
@@ -315,7 +401,7 @@
 <script>
 const APP_URLS = { web: '', apk: '' };
 
-/* ===== 禁止选中 / 长按菜单 / 拖拽（反馈输入框除外）===== */
+/* ===== 禁止长按菜单 / 拖拽（输入框除外）===== */
 ['selectstart', 'contextmenu', 'dragstart'].forEach(ev => {
   document.addEventListener(ev, e => {
     if (e.target && e.target.closest && e.target.closest('input,textarea')) return;
@@ -329,16 +415,10 @@ const io = new IntersectionObserver(entries => {
 }, { threshold: .08 });
 function watchReveals() { document.querySelectorAll('.reveal:not(.on)').forEach(el => io.observe(el)); }
 
-/* ===== 版本号比较：统计栏显示最高的那个版本 ===== */
-function verNum(v) {
-  return String(v || '0').split('.').map(x => parseInt(x, 10) || 0);
-}
+function verNum(v) { return String(v || '0').split('.').map(x => parseInt(x, 10) || 0); }
 function verCmp(a, b) {
   const x = verNum(a), y = verNum(b), n = Math.max(x.length, y.length);
-  for (let i = 0; i < n; i++) {
-    const d = (x[i] || 0) - (y[i] || 0);
-    if (d) return d;
-  }
+  for (let i = 0; i < n; i++) { const d = (x[i] || 0) - (y[i] || 0); if (d) return d; }
   return 0;
 }
 
@@ -346,7 +426,6 @@ function openModal(f) {
   document.getElementById('modalName').textContent = f.name + ' · 选择系统';
   APP_URLS.web = f.file;
   APP_URLS.apk = f.apkMirror || '';
-  // 根据当前设备自动高亮推荐项
   const ua = navigator.userAgent;
   const isIos = /iPhone|iPad|iPod/i.test(ua);
   const isAndroid = /Android/i.test(ua);
@@ -360,11 +439,10 @@ function openModal(f) {
   document.getElementById('modalMask').classList.add('show');
 }
 function closeModal() { document.getElementById('modalMask').classList.remove('show'); }
-// 只有「取消」按钮能关闭，点遮罩/卡片不触发
 document.getElementById('modalCancel').addEventListener('click', closeModal);
 document.getElementById('optAndroid').addEventListener('click', () => {
   if (APP_URLS.apk) { const a = document.createElement('a'); a.href = APP_URLS.apk; a.download = ''; a.click(); }
-  else if (APP_URLS.web) window.open(APP_URLS.web, '_blank'); // 纯网页应用：安卓也直接打开网页
+  else if (APP_URLS.web) window.open(APP_URLS.web, '_blank');
   closeModal();
 });
 document.getElementById('optIos').addEventListener('click', () => {
@@ -372,29 +450,28 @@ document.getElementById('optIos').addEventListener('click', () => {
   closeModal();
 });
 
-/* ===== 微信/QQ 内置浏览器拦截安装包下载 → 弹引导 ===== */
+/* ===== 微信/QQ 内置浏览器拦截 APK 下载 → 弹引导（保留原逻辑，换软 UI） ===== */
 const IN_SHELL = /MicroMessenger/i.test(navigator.userAgent) ||
-  /QQ\/[\d.]+/i.test(navigator.userAgent) ||
-  /Weibo/i.test(navigator.userAgent);
-
+  /QQ\/[\d.]+/i.test(navigator.userAgent) || /Weibo/i.test(navigator.userAgent);
 function ensureApkGuide() {
   let m = document.getElementById('apkGuideMask');
   if (m) return m;
   m = document.createElement('div');
   m.id = 'apkGuideMask';
-  m.style.cssText = 'position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(2,8,15,.78);' +
-    'z-index:999;display:none;align-items:center;justify-content:center;padding:24px;';
+  m.style.cssText = 'position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(58,52,70,.3);' +
+    '-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);z-index:999;display:none;align-items:center;justify-content:center;padding:24px;';
   const card = document.createElement('div');
-  card.style.cssText = 'max-width:340px;width:100%;background:#101C2C;border:1px solid #2A3B52;' +
-    'border-radius:14px;padding:22px;color:#E8EEF6;font-size:14px;line-height:1.7;';
+  card.style.cssText = 'max-width:340px;width:100%;background:#fffdfa;border:1px solid rgba(255,255,255,.95);' +
+    'border-radius:26px;padding:24px;color:#3d414c;font-size:14px;line-height:1.7;' +
+    'box-shadow:0 30px 70px rgba(80,70,100,.2);';
   card.innerHTML =
     '<div style="font-weight:700;font-size:16px;margin-bottom:10px;">这里下不了安装包</div>' +
     '<div id="apkGuideText"></div>' +
     '<div style="display:flex;gap:10px;margin-top:18px;">' +
-    '<button id="apkGuideCopy" style="flex:1;padding:11px;border-radius:10px;border:0;' +
-    'background:#3ECF8E;color:#04120F;font-weight:700;font-size:14px;">复制链接</button>' +
-    '<button id="apkGuideClose" style="flex:1;padding:11px;border-radius:10px;border:1px solid #2A3B52;' +
-    'background:transparent;color:#E8EEF6;font-size:14px;">我知道了</button>' +
+    '<button id="apkGuideCopy" style="flex:1;padding:11px;border-radius:12px;border:0;' +
+    'background:linear-gradient(135deg,#a5e2dc,#cdece2);color:#356f6b;font-weight:700;font-size:14px;">复制链接</button>' +
+    '<button id="apkGuideClose" style="flex:1;padding:11px;border-radius:12px;border:1px solid rgba(255,255,255,.95);' +
+    'background:#f7f5f0;color:#777d8a;font-size:14px;">我知道了</button>' +
     '</div>';
   m.appendChild(card);
   document.body.appendChild(m);
@@ -402,34 +479,26 @@ function ensureApkGuide() {
   m.querySelector('#apkGuideCopy').addEventListener('click', () => {
     const url = m.dataset.url || '';
     const done = () => {
-      const b = m.querySelector('#apkGuideCopy');
-      b.textContent = '已复制';
+      const b = m.querySelector('#apkGuideCopy'); b.textContent = '已复制';
       setTimeout(() => { b.textContent = '复制链接'; }, 1800);
     };
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(url).then(done).catch(() => fallbackCopy(url, done));
-    } else {
-      fallbackCopy(url, done);
-    }
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(done).catch(() => fallbackCopy(url, done));
+    else fallbackCopy(url, done);
   });
   return m;
 }
 function fallbackCopy(text, done) {
   const ta = document.createElement('textarea');
-  ta.value = text;
-  ta.style.cssText = 'position:fixed;opacity:0;';
-  document.body.appendChild(ta);
-  ta.select();
+  ta.value = text; ta.style.cssText = 'position:fixed;opacity:0;';
+  document.body.appendChild(ta); ta.select();
   try { document.execCommand('copy'); done(); } catch (_) {}
   document.body.removeChild(ta);
 }
-
 if (IN_SHELL) {
   document.addEventListener('click', e => {
     const a = e.target && e.target.closest ? e.target.closest('a[href*=".apk"]') : null;
     if (!a) return;
-    e.preventDefault();
-    e.stopPropagation();
+    e.preventDefault(); e.stopPropagation();
     let url = a.getAttribute('href') || '';
     try { url = new URL(url, location.href).href; } catch (_) {}
     const m = ensureApkGuide();
@@ -448,66 +517,50 @@ const OWNER_MAIL = '3484295527@qq.com';
 const fbMask = document.getElementById('fbMask');
 const fbMsg = document.getElementById('fbMsg');
 const fbSubmit = document.getElementById('fbSubmit');
-
 function openFb() {
   document.getElementById('fbEmail').value = '';
   document.getElementById('fbText').value = '';
-  fbMsg.textContent = '';
-  fbMsg.className = 'fb-msg';
-  fbSubmit.disabled = false;
-  fbSubmit.textContent = '发送';
+  fbMsg.textContent = ''; fbMsg.className = 'fb-msg';
+  fbSubmit.disabled = false; fbSubmit.textContent = '发送';
   fbMask.classList.add('show');
   setTimeout(() => document.getElementById('fbEmail').focus(), 180);
 }
 function closeFb() { fbMask.classList.remove('show'); }
 document.getElementById('fbBtn').addEventListener('click', openFb);
 document.getElementById('fbCancel').addEventListener('click', closeFb);
-
 function fbTip(text, type) { fbMsg.textContent = text; fbMsg.className = 'fb-msg ' + (type || ''); }
-
 fbSubmit.addEventListener('click', () => {
   const email = document.getElementById('fbEmail').value.trim();
   const text = document.getElementById('fbText').value.trim();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { fbTip('请填写正确的邮箱地址', 'err'); return; }
   if (text.length < 2) { fbTip('内容太短了，再多写几个字吧', 'err'); return; }
-
-  fbSubmit.disabled = true;
-  fbSubmit.textContent = '发送中…';
-  fbTip('');
-
+  fbSubmit.disabled = true; fbSubmit.textContent = '发送中…'; fbTip('');
   fetch('https://formsubmit.co/ajax/' + OWNER_MAIL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
     body: JSON.stringify({
-      '对方邮箱': email,
-      '反馈内容': text,
-      '页面': location.href,
-      '_subject': '【下载页反馈】' + email,
-      '_template': 'table',
-      '_captcha': 'false'
+      '对方邮箱': email, '反馈内容': text, '页面': location.href,
+      '_subject': '【下载页反馈】' + email, '_template': 'table', '_captcha': 'false'
     })
   })
     .then(r => { if (!r.ok) throw new Error(); return r.json(); })
     .then(d => {
-      if (d && d.success === 'false') throw new Error(); // 未激活等情况，FormSubmit 返回 success:false
+      if (d && d.success === 'false') throw new Error();
       fbTip('已发送，谢谢你的反馈！', 'ok');
       document.getElementById('fbEmail').value = '';
       document.getElementById('fbText').value = '';
       setTimeout(closeFb, 1600);
     })
     .catch(() => {
-      // 发送失败时退回邮件客户端
-      const href = 'mailto:' + OWNER_MAIL
-        + '?subject=' + encodeURIComponent('【下载页反馈】' + email)
+      const href = 'mailto:' + OWNER_MAIL + '?subject=' + encodeURIComponent('【下载页反馈】' + email)
         + '&body=' + encodeURIComponent('我的邮箱：' + email + '\n\n' + text);
       fbTip('发送未成功，已为你打开邮箱客户端，直接发送即可', 'err');
       window.location.href = href;
-      fbSubmit.disabled = false;
-      fbSubmit.textContent = '发送';
+      fbSubmit.disabled = false; fbSubmit.textContent = '发送';
     });
 });
 
-/* ===== 更新日志展开 / 收起（阻止冒泡，避免触发下载弹窗）===== */
+/* ===== 更新日志展开 / 收起 ===== */
 document.addEventListener('click', e => {
   const t = e.target.closest('.log-toggle');
   if (t) {
@@ -518,66 +571,81 @@ document.addEventListener('click', e => {
   }
 });
 
+/* ===== 搜索与分类（纯前端过滤，不改数据） ===== */
+let activeCat = 'all', activeQuery = '';
+function applyFilter() {
+  document.querySelectorAll('.file-card').forEach(card => {
+    const okCat = activeCat === 'all' || card.dataset.cat === activeCat;
+    const okQuery = !activeQuery || (card.dataset.search || '').indexOf(activeQuery) !== -1;
+    card.classList.toggle('hide', !(okCat && okQuery));
+  });
+  const deco = document.querySelector('.deco-card');
+  if (deco) deco.classList.toggle('hide', activeCat !== 'all' || !!activeQuery);
+}
+document.getElementById('siteSearch').addEventListener('input', e => {
+  activeQuery = e.target.value.trim().toLowerCase(); applyFilter();
+});
+document.querySelectorAll('.cat').forEach(el => {
+  el.addEventListener('click', () => {
+    document.querySelectorAll('.cat').forEach(x => x.classList.remove('on'));
+    el.classList.add('on'); activeCat = el.dataset.cat; applyFilter();
+  });
+});
+
+/* ===== 数据驱动渲染 ===== */
 fetch('files.json?t=' + Date.now())
   .then(r => r.json())
   .then(data => {
     document.getElementById('siteName').textContent = data.siteName || '应用下载中心';
+    document.getElementById('navName').textContent = data.siteName || '应用下载中心';
     document.getElementById('siteDesc').textContent = data.siteDesc || '';
     const list = document.getElementById('list');
     const files = data.files || [];
     document.getElementById('statCount').textContent = files.length;
-    const topVer = files.map(f => f.version).sort(verCmp).pop();
-    document.getElementById('statVer').textContent = topVer || '—';
-    if (!files.length) { list.innerHTML = '<div class="empty">暂无文件，敬请期待</div>'; return; }
+    document.getElementById('statVer').textContent = files.map(f => f.version).sort(verCmp).pop() || '—';
+    if (!files.length) { list.innerHTML = '<div class="empty">暂无应用，敬请期待</div>'; return; }
+    const tones = ['mint', 'peach', 'lilac', 'sky'];
     list.innerHTML = files.map((f, i) => {
       const tags = (f.tags || []).map(t => `<span class="tag">${t}</span>`).join('');
       const logs = (f.changelog || []).map(l => {
         const notes = (l.notes || []).map(n => `<li>${n}</li>`).join('');
-        return `<div class="log-item"><span class="log-ver">v${l.version}</span><div class="log-info"><div class="log-date">${l.date || ''}</div><ul>${notes}</ul></div></div>`;
+        return `<div class="log-item"><span class="log-ver">v${l.version}</span><span class="log-date">${l.date || ''}</span><div class="log-info"><ul>${notes}</ul></div></div>`;
       }).join('');
-      const logHtml = logs ? `
-        <span class="log-toggle">🕘 更新日志 <span class="arr">▼</span></span>
-        <div class="log-box">${logs}</div>` : '';
+      const logHtml = logs ? `<span class="log-toggle">🕘 更新日志 <span class="arr">▼</span></span><div class="log-box">${logs}</div>` : '';
+      const cat = (f.tags || []).indexOf('游戏') !== -1 ? '游戏' : '工具';
+      const btn = f.pageOnly
+        ? `<a class="dl-btn orange" href="${f.file}" target="_blank" rel="noopener">${f.cta || '📄 查看详情'}</a>`
+        : (f.androidOnly && f.apkMirror
+          ? `<a class="dl-btn" href="${f.apkMirror}" download>⬇ 安卓下载</a>`
+          : `<a class="dl-btn orange" href="javascript:void(0)">📲 获取应用</a>`);
+      const featured = i === 0 ? ' featured' : '';
+      const art = i === 0 ? `<div class="feature-art"><div class="orb"></div><div class="cap">SIMPLE &amp; GOOD</div></div>` : '';
+      const searchText = [f.name, f.desc, f.id, (f.tags || []).join(' ')].join(' ').toLowerCase();
       return `
-      <div class="file-card reveal" data-id="${f.id}" style="transition-delay:${Math.min(i * 90, 360)}ms">
-        <div class="icon">${f.icon || 'APP'}</div>
+      <div class="file-card reveal${featured}" data-id="${f.id}" data-cat="${cat}" data-search="${searchText.replace(/"/g, '&quot;')}" style="transition-delay:${Math.min(i * 80, 320)}ms">
+        <div class="icon ${tones[i % tones.length]}">${f.icon || 'APP'}</div>
         <div class="info">
-          <div class="name-row">
-            <span class="fname">${f.name}</span>
-            <span class="ver">v${f.version}</span>
-            ${tags}
-          </div>
-          <div class="meta">${f.date} · ${f.size} · ${f.platforms || 'Android &amp; iPhone'}</div>
+          <div class="name-row"><span class="fname">${f.name}</span><span class="ver">v${f.version}</span>${tags}</div>
+          <div class="meta">${f.date} · ${f.size} · ${f.platforms || '仅 Android'}</div>
           <div class="desc">${f.desc || ''}</div>
           ${logHtml}
-          <div class="dl-row">
-            ${f.pageOnly
-              ? `<a class="dl-btn" href="${f.file}" target="_blank" rel="noopener">${f.cta || '📄 查看详情'}</a>`
-              : (f.androidOnly && f.apkMirror
-                ? `<a class="dl-btn" href="${f.apkMirror}" download>⬇ 安卓下载</a>`
-                : `<a class="dl-btn" href="javascript:void(0)">📲 获取应用</a>`)}
-          </div>
+          <div class="dl-row">${btn}</div>
           ${f.notice ? `<div class="install-tip">${f.notice}</div>` : ''}
         </div>
+        ${art}
       </div>`;
-    }).join('');
-    // 只有点「获取应用」按钮才弹出系统选择窗（工程页直连、安卓直下的卡片不弹）
+    }).join('') + `<div class="deco-card"><div class="big-sun"></div><div><b>慢慢来，也很好</b><p>这里收集的都是作者自己用的小工具，简单一点，够用就好。</p></div></div>`;
     document.querySelectorAll('.file-card').forEach(card => {
       const f = files.find(x => x.id === card.dataset.id);
       if (!f || f.pageOnly || (f.androidOnly && f.apkMirror)) return;
       const btn = card.querySelector('.dl-btn');
       if (!btn) return;
-      btn.addEventListener('click', e => {
-        e.preventDefault();
-        e.stopPropagation();
-        openModal(f);
-      });
+      btn.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); openModal(f); });
     });
+    applyFilter();
     watchReveals();
   })
-  .catch(() => {
-    document.getElementById('list').innerHTML = '<div class="empty">加载失败，请刷新重试</div>';
-  });
+  .catch(() => { document.getElementById('list').innerHTML = '<div class="empty">加载失败，请刷新重试</div>'; });
 </script>
 </body>
 </html>

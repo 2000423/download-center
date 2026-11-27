@@ -62,9 +62,9 @@
   .cat {
     padding: 9px 18px; border-radius: 999px; font-size: 12.5px; color: var(--ink-soft); cursor: pointer;
     background: rgba(255,255,255,.8); border: 1px solid var(--line); box-shadow: var(--shadow-sm);
-    transition: transform .15s, color .2s, background .2s;
+    transition: transform .3s cubic-bezier(.34,1.56,.64,1), color .25s, background .25s, border-color .25s;
   }
-  .cat:hover { transform: translateY(-1px); }
+  .cat:hover { transform: translateY(-2px); }
   .cat.on { color: #3a7d78; background: linear-gradient(135deg, #d5f0ec, #e8f4ee); border-color: rgba(134,212,207,.5); }
   .proj-btn {
     padding: 9px 18px; border-radius: 999px; font-size: 12.5px; font-weight: 600;
@@ -80,18 +80,24 @@
     min-width: 0; position: relative; overflow: hidden;
     background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
     box-shadow: var(--shadow); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
-    transition: transform .22s ease, box-shadow .22s ease;
+    transition: transform .4s cubic-bezier(.22,1,.36,1), box-shadow .4s cubic-bezier(.22,1,.36,1);
   }
   .file-card:hover, .deco-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 26px 54px rgba(112,102,148,.14), 0 5px 14px rgba(112,102,148,.06), inset 0 1px 0 rgba(255,255,255,.92);
+    transform: translateY(-6px);
+    box-shadow: 0 32px 64px rgba(112,102,148,.16), 0 8px 18px rgba(112,102,148,.07), inset 0 1px 0 rgba(255,255,255,.92);
   }
   .file-card.hide, .deco-card.hide { display: none; }
   .orb {
     position: absolute; border-radius: 50%; pointer-events: none;
     background: radial-gradient(circle at 34% 28%, #fff0c8 0%, #f6c48a 42%, #eaa36e 100%);
     box-shadow: 0 14px 30px rgba(214,153,112,.34), inset -8px -8px 18px rgba(180,120,80,.16), inset 4px 4px 10px rgba(255,255,255,.5);
+    animation: orbFloat 7.2s ease-in-out infinite; will-change: transform;
   }
+  @keyframes orbFloat {
+    0%, 100% { transform: translateY(0) scale(1); }
+    50% { transform: translateY(-7px) scale(1.035); }
+  }
+  .w-welcome .orb { animation-delay: -2.8s; animation-duration: 8.4s; }
   .orb.lg { width: 120px; height: 120px; }
   .orb.md { width: 96px; height: 96px; }
 
@@ -131,7 +137,13 @@
   .w-player h2 { font-size: 16px; font-weight: 700; color: #343a45; }
   .w-player p { font-size: 12px; color: var(--ink-soft); margin-top: 4px; line-height: 1.6; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .wave { display: flex; align-items: flex-end; gap: 3px; height: 32px; margin-top: 14px; }
-  .wave i { width: 3px; border-radius: 3px; background: linear-gradient(180deg, var(--mint), #b8e6e1); }
+  .wave i {
+    width: 3px; border-radius: 3px; background: linear-gradient(180deg, var(--mint), #b8e6e1);
+    transform-origin: bottom; animation: waveBeat 1.3s ease-in-out infinite alternate;
+  }
+  .wave i:nth-child(3n) { animation-delay: -.45s; }
+  .wave i:nth-child(3n+1) { animation-delay: -.9s; }
+  @keyframes waveBeat { from { transform: scaleY(.5); } to { transform: scaleY(1); } }
 
   /* 共用小元素 */
   .meta { margin-top: 10px; font-size: 11px; color: var(--ink-faint); }
@@ -141,10 +153,10 @@
   .dl-btn {
     display: inline-flex; align-items: center; gap: 6px; padding: 9px 20px; border-radius: 999px;
     font-size: 12px; font-weight: 700; color: #fff; background: var(--navy);
-    box-shadow: 0 8px 18px rgba(47,109,112,.28); cursor: pointer; transition: transform .15s, box-shadow .2s;
+    box-shadow: 0 8px 18px rgba(47,109,112,.28); cursor: pointer; transition: transform .3s cubic-bezier(.34,1.56,.64,1), box-shadow .3s ease;
   }
-  .dl-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 24px rgba(47,109,112,.36); }
-  .dl-btn:active { transform: scale(.97); }
+  .dl-btn:hover { transform: translateY(-3px); box-shadow: 0 14px 28px rgba(47,109,112,.38); }
+  .dl-btn:active { transform: scale(.95); }
   .dl-btn.orange { color: #fff; background: linear-gradient(135deg, #f3b88f, #eaa273); box-shadow: 0 8px 18px rgba(214,153,112,.28); }
   .dl-btn.ghost { color: var(--ink-soft); background: rgba(255,255,255,.85); box-shadow: var(--shadow-sm); }
 
@@ -153,11 +165,11 @@
     margin-top: 10px; display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: #7e72a3;
     cursor: pointer; padding: 5px 12px; border-radius: 999px; background: rgba(198,184,232,.12); position: relative; z-index: 2;
   }
-  .log-toggle .arr { display: inline-block; transition: transform .25s; font-size: 9px; }
+  .log-toggle .arr { display: inline-block; transition: transform .35s cubic-bezier(.34,1.56,.64,1); font-size: 9px; }
   .log-toggle.open .arr { transform: rotate(180deg); }
   .log-box { display: none; margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(112,102,148,.1); position: relative; z-index: 2; }
-  .log-box.open { display: block; animation: logIn .3s ease; }
-  @keyframes logIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: none; } }
+  .log-box.open { display: block; animation: logIn .42s cubic-bezier(.22,1,.36,1); }
+  @keyframes logIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
   .log-item + .log-item { margin-top: 9px; }
   .log-ver { display: inline-block; font-size: 10px; padding: 2px 8px; border-radius: 999px; background: rgba(134,212,207,.14); color: var(--mint-deep); }
   .log-date { display: inline-block; margin-left: 6px; font-size: 10px; color: var(--ink-faint); }
@@ -172,12 +184,18 @@
     width: 92px; height: 92px; border-radius: 50%; position: relative;
     background: conic-gradient(var(--mint) 0 68%, rgba(134,212,207,.16) 68% 100%);
     display: flex; align-items: center; justify-content: center;
+    animation: ringIn 1.3s cubic-bezier(.22,1,.36,1) .35s both;
   }
+  @keyframes ringIn { from { transform: scale(.72) rotate(-24deg); opacity: 0; } to { transform: none; opacity: 1; } }
   .ring::before { content: ''; position: absolute; width: 70px; height: 70px; border-radius: 50%; background: #fffdfa; box-shadow: inset 0 2px 8px rgba(112,102,148,.06); }
   .ring b { position: relative; z-index: 1; font-size: 22px; color: var(--mint-deep); font-weight: 750; }
   .deco-card .cap { font-size: 11px; color: var(--ink-faint); margin-top: 12px; }
   .deco-card.w-chart { grid-column: span 8; margin-top: 10px; }
   .chart { width: 100%; height: 72px; margin-top: 8px; display: block; }
+  .chart path[stroke] { stroke-dasharray: 480; stroke-dashoffset: 480; animation: drawLine 2s cubic-bezier(.22,1,.36,1) .45s forwards; }
+  .chart path[fill] { animation: fillIn 1.6s ease .85s both; }
+  @keyframes drawLine { to { stroke-dashoffset: 0; } }
+  @keyframes fillIn { from { opacity: 0; } to { opacity: 1; } }
   .deco-card.w-toggle { grid-column: span 4; margin-top: 34px; }
   .toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 0; font-size: 12px; color: var(--ink-soft); border-bottom: 1px solid rgba(112,102,148,.08); }
   .toggle-row:last-child { border-bottom: 0; }
@@ -202,13 +220,13 @@
     background: rgba(88,80,120,.26); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
     align-items: center; justify-content: center; padding: 24px;
   }
-  .modal-mask.show { display: flex; animation: fadeIn .22s ease; }
+  .modal-mask.show { display: flex; animation: fadeIn .3s ease; }
   @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
   .modal {
     width: 100%; max-width: 420px; background: #fffdfa;
     border: 1px solid rgba(255,255,255,.95); border-radius: 28px; padding: 28px 24px 22px;
     box-shadow: 0 30px 70px rgba(80,70,100,.18), inset 0 1px 0 rgba(255,255,255,.9);
-    animation: popIn .28s cubic-bezier(.34,1.56,.64,1);
+    animation: popIn .42s cubic-bezier(.34,1.4,.64,1);
   }
   @keyframes popIn { from { transform: scale(.9) translateY(12px); opacity: 0; } to { transform: scale(1) translateY(0); opacity: 1; } }
   .modal h3 { text-align: center; font-size: 18px; font-weight: 700; color: #3c414c; }
@@ -262,9 +280,16 @@
   .loading, .empty { text-align: center; padding: 70px 0; color: var(--ink-faint); font-size: 14px; grid-column: 1 / -1; }
 
   /* ===== 入场动画（轻柔） ===== */
-  .reveal { opacity: 0; transform: translateY(14px); transition: opacity .6s ease, transform .6s ease; }
+  .reveal {
+    opacity: 0; transform: translateY(18px) scale(.985);
+    transition: opacity .72s cubic-bezier(.22,1,.36,1), transform .72s cubic-bezier(.22,1,.36,1);
+    will-change: opacity, transform;
+  }
   .reveal.on { opacity: 1; transform: none; }
-  @media (prefers-reduced-motion: reduce) { .reveal { opacity: 1; transform: none; transition: none; } }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+    .reveal { opacity: 1; transform: none; }
+  }
 
   /* ===== 平板 ===== */
   @media (max-width: 980px) {
@@ -595,7 +620,7 @@ fetch('files.json?t=' + Date.now())
       const logHtml = logs ? `<span class="log-toggle">🕘 更新日志 <span class="arr">▼</span></span><div class="log-box">${logs}</div>` : '';
       const meta = `${f.date} · ${f.size} · ${f.platforms || '仅 Android'}`;
       const searchText = [f.name, f.desc, f.id, (f.tags || []).join(' ')].join(' ').toLowerCase();
-      const attrs = `data-id="${f.id}" data-cat="${cat}" data-search="${searchText.replace(/"/g, '&quot;')}" style="transition-delay:${Math.min(i * 80, 320)}ms"`;
+      const attrs = `data-id="${f.id}" data-cat="${cat}" data-search="${searchText.replace(/"/g, '&quot;')}" style="transition-delay:${Math.min(i * 110, 440)}ms"`;
 
       if (i === 0) return `
       <div class="file-card w-hero reveal" ${attrs}>
@@ -648,16 +673,16 @@ fetch('files.json?t=' + Date.now())
     }).join('');
 
     const deco = `
-      <div class="deco-card w-ring reveal"><div class="ring"><b>${files.length}</b></div><div class="cap">个应用 · 持续更新</div></div>
-      <div class="deco-card w-chart reveal">
+      <div class="deco-card w-ring reveal" style="transition-delay:400ms"><div class="ring"><b>${files.length}</b></div><div class="cap">个应用 · 持续更新</div></div>
+      <div class="deco-card w-chart reveal" style="transition-delay:480ms">
         <div class="cap">最新版本一览</div>
         <svg class="chart" viewBox="0 0 320 72" preserveAspectRatio="none">
           <defs><linearGradient id="chartFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#86d4cf" stop-opacity=".35"/><stop offset="100%" stop-color="#86d4cf" stop-opacity="0"/></linearGradient></defs>
           <path d="M0 58 C 30 50, 50 62, 80 44 S 130 20, 160 34 S 210 52, 240 26 S 290 12, 320 20 L 320 72 L 0 72 Z" fill="url(#chartFill)"/>
-          <path d="M0 58 C 30 50, 50 62, 80 44 S 130 20, 160 34 S 210 52, 240 26 S 290 12, 320 20" fill="none" stroke="#86d4cf" stroke-width="3" stroke-linecap="round"/>
+          <path d="M0 58 C 30 50, 50 62, 80 44 S 130 20, 160 34 S 210 52, 240 26 S 290 12, 320 20" fill="none" stroke="#5fb5af" stroke-width="3.5" stroke-linecap="round"/>
         </svg>
       </div>
-      <div class="deco-card w-toggle reveal">
+      <div class="deco-card w-toggle reveal" style="transition-delay:560ms">
         <div class="toggle-row"><span>本地运行</span><div class="toggle"></div></div>
         <div class="toggle-row"><span>免登录</span><div class="toggle"></div></div>
         <div class="toggle-row"><span>无广告</span><div class="toggle"></div></div>

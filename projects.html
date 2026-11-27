@@ -3,74 +3,83 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#f7f4ee">
 <title>项目页 · 应用下载中心</title>
 <style>
+  /* ===== 与首页统一的柔和轻质感 Soft UI ===== */
+  :root {
+    --ink: #3d414c; --ink-soft: #777d8a; --ink-faint: #a2a7b2;
+    --card: rgba(255,255,255,.82); --line: rgba(255,255,255,.95);
+    --mint: #86d4cf; --mint-deep: #4e9d99; --peach: #f3b88f; --peach-deep: #c47f55;
+    --shadow: 0 18px 44px rgba(96,88,112,.10), 0 3px 10px rgba(96,88,112,.05), inset 0 1px 0 rgba(255,255,255,.9);
+    --shadow-sm: 0 8px 22px rgba(96,88,112,.09), inset 0 1px 0 rgba(255,255,255,.9);
+  }
   * { box-sizing: border-box; }
   body {
-    margin: 0; padding: 0; background: #050814; color: #e8f6ff;
+    margin: 0; padding: 0; color: var(--ink); min-height: 100vh;
     font-family: system-ui, -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
-    -webkit-font-smoothing: antialiased;
-    background-image:
-      radial-gradient(900px 420px at 50% -10%, rgba(0,229,255,.10) 0%, transparent 60%),
-      radial-gradient(700px 380px at 85% 110%, rgba(123,92,255,.10) 0%, transparent 60%);
+    -webkit-font-smoothing: antialiased; overflow-x: hidden;
+    background: linear-gradient(135deg, #faf7f1 0%, #f5f3f9 52%, #fdf5f0 100%);
   }
+  body::before, body::after { content: ''; position: fixed; z-index: -1; pointer-events: none; border-radius: 50%; filter: blur(90px); opacity: .55; }
+  body::before { width: 520px; height: 520px; top: -190px; left: -130px; background: #ffe7b7; box-shadow: 1000px 620px 0 60px #ffd9e2; }
+  body::after { width: 600px; height: 600px; bottom: -260px; right: -180px; background: #d3e8f7; }
   a { color: inherit; text-decoration: none; }
-  .wrap { max-width: 720px; margin: 0 auto; padding: 48px 20px 80px; position: relative; }
+  .wrap { max-width: 900px; margin: 0 auto; padding: 30px 24px 70px; position: relative; }
 
   .proj-btn {
-    position: absolute; top: 52px; right: 20px; z-index: 50;
+    position: absolute; top: 34px; right: 24px; z-index: 50;
     display: inline-flex; align-items: center; gap: 7px;
     padding: 9px 18px; border-radius: 999px; font-size: 13px; font-weight: 600;
-    color: #b39dff; background: rgba(123,92,255,.14);
-    border: 1px solid rgba(123,92,255,.5);
-    -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
-    transition: transform .15s, box-shadow .2s, color .2s;
+    color: var(--peach-deep); background: rgba(243,184,143,.16);
+    border: 1px solid rgba(243,184,143,.38); box-shadow: var(--shadow-sm);
+    transition: transform .15s, background .2s;
   }
-  .proj-btn:hover { color: #d3c6ff; box-shadow: 0 0 26px rgba(123,92,255,.4); transform: translateY(-1px); }
+  .proj-btn:hover { background: rgba(243,184,143,.28); transform: translateY(-1px); }
   .proj-btn:active { transform: scale(.96); }
-  @media (max-width: 560px) { .proj-btn { top: 14px; right: 14px; padding: 7px 14px; font-size: 12px; } }
+  @media (max-width: 560px) { .proj-btn { top: 20px; right: 16px; padding: 7px 13px; font-size: 12px; } }
 
-  header { text-align: center; margin-bottom: 36px; }
-  header h1 {
-    font-size: 26px; font-weight: 800; letter-spacing: 2px;
-    color: #b39dff; text-shadow: 0 0 16px rgba(123,92,255,.6), 0 0 50px rgba(123,92,255,.3);
-  }
-  header .sub { margin-top: 10px; font-size: 14px; color: rgba(232,246,255,.55); }
+  header { text-align: center; margin: 16px 0 30px; }
+  header h1 { font-size: 28px; font-weight: 750; letter-spacing: .5px; color: #363b46; }
+  header .sub { margin-top: 8px; font-size: 14px; color: var(--ink-soft); }
 
   .proj-card {
     display: block; text-decoration: none; color: inherit; cursor: pointer;
-    background: rgba(255,255,255,.06);
-    -webkit-backdrop-filter: blur(24px) saturate(160%); backdrop-filter: blur(24px) saturate(160%);
-    border: 1px solid rgba(255,255,255,.14); border-radius: 22px;
-    padding: 24px; margin-bottom: 22px;
-    box-shadow: 0 10px 36px rgba(0,0,0,.35);
-    transition: transform .15s, border-color .2s;
+    background: var(--card); border: 1px solid var(--line); border-radius: 26px;
+    padding: 26px; margin-bottom: 20px; box-shadow: var(--shadow);
+    -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
+    transition: transform .18s, box-shadow .2s;
   }
-  .proj-card:hover { transform: translateY(-2px); border-color: rgba(0,229,255,.45); }
+  .proj-card:hover { transform: translateY(-3px); box-shadow: 0 26px 54px rgba(96,88,112,.15), 0 5px 14px rgba(96,88,112,.06), inset 0 1px 0 rgba(255,255,255,.9); }
   .name-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
   .icon {
-    width: 52px; height: 52px; border-radius: 14px; flex: none;
+    width: 54px; height: 54px; border-radius: 17px; flex: none;
     display: flex; align-items: center; justify-content: center; font-size: 24px;
-    background: linear-gradient(135deg, #00e5ff, #7b5cff);
-    box-shadow: 0 0 22px rgba(0,229,255,.3);
+    background: linear-gradient(135deg, #c9efe9, #f8d9bd);
+    box-shadow: 0 8px 20px rgba(110,180,175,.2), inset 0 1px 0 rgba(255,255,255,.8);
   }
-  .fname { font-size: 20px; font-weight: 800; }
-  .ver { font-size: 11px; padding: 3px 9px; border-radius: 999px; background: rgba(0,229,255,.14); border: 1px solid rgba(0,229,255,.45); color: #5df0ff; }
-  .tag { font-size: 11px; padding: 3px 9px; border-radius: 999px; background: rgba(140,110,255,.13); border: 1px solid rgba(140,110,255,.4); color: #b39dff; }
+  .fname { font-size: 20px; font-weight: 700; color: #383d48; }
+  .ver { font-size: 11px; padding: 3px 10px; border-radius: 999px; background: rgba(134,212,207,.15); color: var(--mint-deep); }
+  .tag { font-size: 11px; padding: 3px 10px; border-radius: 999px; background: rgba(198,184,232,.15); color: #7e72a3; }
 
-  .sec-title { margin-top: 16px; font-size: 13px; font-weight: 700; letter-spacing: .06em; display: flex; align-items: center; gap: 8px; }
-  .sec-title::before { content: ""; width: 4px; height: 14px; border-radius: 99px; background: linear-gradient(180deg, #00e5ff, #7b5cff); }
-  .intro { margin-top: 8px; font-size: 13.5px; line-height: 1.8; color: rgba(232,246,255,.75); }
+  .sec-title { margin-top: 17px; font-size: 13px; font-weight: 700; letter-spacing: .05em; color: #4a4f5a; display: flex; align-items: center; gap: 8px; }
+  .sec-title::before { content: ""; width: 4px; height: 14px; border-radius: 99px; background: linear-gradient(180deg, #a5e2dc, #f3b88f); }
+  .intro { margin-top: 8px; font-size: 13.5px; line-height: 1.85; color: var(--ink-soft); }
   .feat { margin-top: 8px; }
-  .feat li { list-style: none; font-size: 13px; line-height: 1.9; color: rgba(232,246,255,.75); display: flex; gap: 8px; }
-  .feat li::before { content: "✓"; color: #5df0ff; font-weight: 700; flex: none; }
+  .feat li { list-style: none; font-size: 13px; line-height: 1.9; color: var(--ink-soft); display: flex; gap: 8px; }
+  .feat li::before { content: "✓"; color: var(--mint-deep); font-weight: 700; flex: none; }
   .lim { margin-top: 8px; }
-  .lim li { list-style: none; font-size: 12.5px; line-height: 1.9; color: rgba(232,246,255,.55); display: flex; gap: 8px; }
-  .lim li::before { content: "✕"; color: rgba(255,170,170,.75); font-weight: 700; flex: none; }
+  .lim li { list-style: none; font-size: 12.5px; line-height: 1.9; color: var(--ink-faint); display: flex; gap: 8px; }
+  .lim li::before { content: "✕"; color: var(--peach-deep); font-weight: 700; flex: none; }
 
-  .loading, .empty { text-align: center; padding: 60px 0; font-size: 14px; color: rgba(232,246,255,.4); }
-  footer { text-align: center; margin-top: 46px; font-size: 12px; color: rgba(232,246,255,.4); }
-  footer a { color: rgba(93,240,255,.75); }
+  .loading, .empty { text-align: center; padding: 60px 0; font-size: 14px; color: var(--ink-faint); }
+  footer { text-align: center; margin-top: 44px; font-size: 12px; color: var(--ink-faint); }
+  footer a { color: var(--mint-deep); }
+  @media (max-width: 560px) {
+    .wrap { padding: 18px 16px 56px; }
+    header { margin-top: 8px; }
+    .proj-card { padding: 20px 18px; border-radius: 22px; }
+  }
 </style>
 </head>
 <body>

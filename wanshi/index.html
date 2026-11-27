@@ -6,12 +6,12 @@
 <title>万视 · 挂在后台，识别你在看的视频</title>
 <style>
   :root{
-    --bg:#060910; --card:#101827; --pill:#16202f;
-    --stroke:#1e2a40; --stroke-soft:#17202f;
-    --accent:#25e8c6; --accent2:#6c8cff;
-    --text:#f1f6ff; --muted:#7c8ba3;
-    --warn:#ffc24b; --warn-bg:#1e1a0c; --warn-stroke:#3b3012;
-    --danger:#ff5c7a;
+    --bg:#f7f4ee; --card:rgba(255,255,255,.84); --pill:rgba(255,255,255,.78);
+    --stroke:rgba(255,255,255,.95); --stroke-soft:rgba(96,88,112,.12);
+    --accent:#86d4cf; --accent2:#f3b88f;
+    --text:#3d414c; --muted:#7e8492;
+    --warn:#c47f55; --warn-bg:rgba(243,184,143,.14); --warn-stroke:rgba(243,184,143,.38);
+    --danger:#d17878;
   }
   *{box-sizing:border-box;margin:0;padding:0}
   body{
@@ -159,6 +159,39 @@
     .logo h1{font-size:27px}
     .phone{transform:scale(.94);transform-origin:top center}
   }
+  /* ===== 柔和轻质感统一皮肤（2026-11-27，不覆盖任何 JS 逻辑）===== */
+  body{background:linear-gradient(135deg,#faf7f1 0%,#f5f3f9 52%,#fdf5f0 100%) !important;color:var(--text) !important}
+  body::before{content:'';position:fixed;z-index:-1;width:520px;height:520px;top:-190px;left:-130px;border-radius:50%;background:#ffe7b7;filter:blur(90px);opacity:.55;box-shadow:1000px 620px 0 60px #ffd9e2;pointer-events:none}
+  header p.tag,header p.tag[style]{color:var(--muted) !important}
+  .badge,.pill{color:var(--muted) !important;box-shadow:0 8px 22px rgba(96,88,112,.07) !important}
+  .badge b{color:var(--mint-deep) !important}
+  .btn{color:var(--muted) !important;box-shadow:0 8px 22px rgba(96,88,112,.08) !important}
+  .btn.primary,.pill.accent,.mini.acc,.cta{background:linear-gradient(135deg,#a5e2dc,#cdece2) !important;color:#356f6b !important;box-shadow:0 8px 18px rgba(110,182,176,.24) !important}
+  .sec>h2{color:#3d414c !important}
+  .sec>h2::before{background:linear-gradient(180deg,#a5e2dc,#f3b88f) !important}
+  .cell,.step,.item,.dl-item,.entry{box-shadow:0 16px 40px rgba(96,88,112,.10),inset 0 1px 0 rgba(255,255,255,.9) !important;border-radius:20px !important}
+  .cell h3,.step h4,.status h3,.it-title,.dl-name{color:var(--text) !important}
+  .step .idx{background:linear-gradient(135deg,#a5e2dc,#f3b88f) !important;color:#3d414c !important}
+  .phone{background:#fffdfa !important;border:1px solid #fff !important;box-shadow:0 24px 56px rgba(96,88,112,.16),inset 0 0 0 5px rgba(247,244,238,.9) !important}
+  .notch{background:#e9e6e0 !important}
+  .dot{background:#86d4cf !important;box-shadow:0 0 0 4px rgba(134,212,207,.2) !important}
+  .dot.off{background:#cdd2d8 !important;box-shadow:none !important}
+  .scrim{background:rgba(58,52,70,.28) !important}
+  .dialog{background:#fffdfa !important;border:1px solid #fff !important;box-shadow:0 24px 60px rgba(80,70,100,.2) !important;color:var(--text) !important}
+  .field{background:#f7f5f0 !important;border:1px solid #fff !important;color:var(--muted) !important}
+  .field.filled{color:var(--text) !important}
+  .btns{border-top-color:rgba(96,88,112,.1) !important}
+  .btns .ok{color:var(--mint-deep) !important}
+  .dl-state.run,.dl-state.ok{color:var(--mint-deep) !important}
+  .bar{background:rgba(96,88,112,.12) !important}
+  .bar i{background:linear-gradient(135deg,#a5e2dc,#cdece2) !important}
+  code{background:#f2efe9 !important;border-color:#fff !important;color:#5c7f7b !important}
+  .warnbox h3,.warnbox b{color:var(--peach-deep) !important}
+  .warnbox ol{color:var(--muted) !important}
+  .tree{background:#fffdfa !important;border-color:#fff !important;color:var(--muted) !important}
+  .tree b{color:var(--text) !important}
+  footer{border-top-color:rgba(96,88,112,.1) !important;color:var(--muted) !important}
+  footer a{color:var(--mint-deep) !important}
 </style>
 </head>
 <body>

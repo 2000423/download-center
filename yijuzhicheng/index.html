@@ -6,12 +6,12 @@
 <title>一局之城 · 横屏单机城建游戏</title>
 <style>
   :root{
-    --bg:#07120c; --card:#0e1f16; --pill:#122a1e;
-    --stroke:#1d3a2b; --stroke-soft:#182e22;
-    --accent:#4ade80; --accent2:#38bdf8;
-    --text:#eef7f0; --muted:#7e9488;
-    --warn:#ffc24b; --warn-bg:#1e1a0c; --warn-stroke:#3b3012;
-    --danger:#ff5c7a;
+    --bg:#f7f4ee; --card:rgba(255,255,255,.84); --pill:rgba(255,255,255,.78);
+    --stroke:rgba(255,255,255,.95); --stroke-soft:rgba(96,88,112,.12);
+    --accent:#86d4cf; --accent2:#f3b88f;
+    --text:#3d414c; --muted:#7e8492;
+    --warn:#c47f55; --warn-bg:rgba(243,184,143,.14); --warn-stroke:rgba(243,184,143,.38);
+    --danger:#d17878;
   }
   *{box-sizing:border-box;margin:0;padding:0}
   body{
@@ -85,6 +85,24 @@
          text-align:center;font-size:12px;color:var(--muted)}
   footer a{color:var(--accent)}
   @media (max-width:640px){ .logo h1{font-size:26px} header{padding-top:36px} .sec{padding-top:44px} }
+  /* ===== 柔和轻质感统一皮肤（2026-11-27）===== */
+  body{background:linear-gradient(135deg,#faf7f1 0%,#f5f3f9 52%,#fdf5f0 100%) !important;color:var(--text) !important}
+  body::before{content:'';position:fixed;z-index:-1;width:520px;height:520px;top:-190px;left:-130px;border-radius:50%;background:#ffe7b7;filter:blur(90px);opacity:.55;box-shadow:1000px 620px 0 60px #ffd9e2;pointer-events:none}
+  header p.tag{color:var(--muted) !important}
+  .badge{color:var(--muted) !important;box-shadow:0 8px 22px rgba(96,88,112,.07) !important}
+  .badge b{color:var(--mint-deep) !important}
+  .btn{color:var(--muted) !important;box-shadow:0 8px 22px rgba(96,88,112,.08) !important}
+  .btn.primary{background:linear-gradient(135deg,#a5e2dc,#cdece2) !important;color:#356f6b !important;box-shadow:0 8px 18px rgba(110,182,176,.24) !important}
+  .sec>h2{color:#3d414c !important}
+  .sec>h2::before{background:linear-gradient(180deg,#a5e2dc,#f3b88f) !important}
+  .cell,.entry,.rules{box-shadow:0 16px 40px rgba(96,88,112,.10),inset 0 1px 0 rgba(255,255,255,.9) !important;border-radius:20px !important}
+  .cell h3,.entry h3{color:var(--text) !important}
+  .entry h3 .v,.rules li::before,.entry li::before{color:var(--mint-deep) !important}
+  .rules li,.entry li{color:var(--muted) !important}
+  .rules b{color:var(--text) !important}
+  .shot{box-shadow:0 20px 46px rgba(96,88,112,.14) !important;border-color:#fff !important}
+  footer{border-top-color:rgba(96,88,112,.1) !important;color:var(--muted) !important}
+  footer a{color:var(--mint-deep) !important}
 </style>
 </head>
 <body>

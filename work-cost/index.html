@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="theme-color" content="#050814">
+<meta name="theme-color" content="#f7f4ee">
 <title>这东西要工作多久</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent;
@@ -142,6 +142,32 @@
     .hero { font-size: 33px; }
     .hero small { font-size: 14px; }
   }
+  /* ===== 柔和轻质感统一皮肤（2026-11-27）：只改外观，不碰计算逻辑 ===== */
+  body {
+    background:linear-gradient(135deg,#faf7f1 0%,#f5f3f9 52%,#fdf5f0 100%) !important;
+    color:#3d414c !important;
+  }
+  body::before{content:'';position:fixed;z-index:-1;width:520px;height:520px;top:-190px;left:-130px;border-radius:50%;background:#ffe7b7;filter:blur(90px);opacity:.55;box-shadow:1000px 620px 0 60px #ffd9e2;pointer-events:none}
+  body * { text-shadow:none !important }
+  h1,.hero{color:#356f6b !important}
+  .hero-sub b{color:#c47f55 !important}
+  .card,.result-card,.history-item,.chip{
+    background:rgba(255,255,255,.84) !important;border:1px solid rgba(255,255,255,.95) !important;
+    box-shadow:0 16px 40px rgba(96,88,112,.11),inset 0 1px 0 rgba(255,255,255,.9) !important;
+    border-radius:22px !important;color:#3d414c !important;
+  }
+  .card-title,.hero,.hero small,.h-name,.h-price,.h-time,.field label{color:#3d414c !important}
+  .sub,.hero-sub,.hero-sub b,.card-label,.empty-hint,.h-time,.field label{color:#838996 !important}
+  .card-title .tag{background:rgba(198,184,232,.15) !important;border-color:rgba(198,184,232,.4) !important;color:#7e72a3 !important}
+  .field input{background:#f7f5f0 !important;border:1px solid rgba(255,255,255,.95) !important;color:#3d414c !important;box-shadow:inset 0 2px 6px rgba(96,88,112,.05) !important}
+  .field input:focus{border-color:rgba(134,212,207,.75) !important;box-shadow:0 0 0 4px rgba(134,212,207,.13) !important}
+  .field input::placeholder{color:#a2a7b2 !important}
+  .chip:hover{color:#356f6b !important;background:rgba(134,212,207,.16) !important;border-color:rgba(134,212,207,.6) !important}
+  .meter{background:rgba(96,88,112,.12) !important;border-color:rgba(255,255,255,.95) !important}
+  .meter-fill{background:linear-gradient(135deg,#a5e2dc,#cdece2) !important;box-shadow:none !important}
+  .btn{background:linear-gradient(135deg,#a5e2dc,#cdece2) !important;color:#356f6b !important;box-shadow:0 8px 18px rgba(110,182,176,.24) !important;border:0 !important}
+  .btn.ghost{background:rgba(255,255,255,.8) !important;color:#777d8a !important;border:1px solid rgba(255,255,255,.95) !important;box-shadow:0 8px 22px rgba(96,88,112,.08) !important}
+  .toast{background:#fffdfa !important;border:1px solid rgba(255,255,255,.95) !important;color:#3d414c !important;box-shadow:0 20px 50px rgba(80,70,100,.2) !important;border-radius:16px !important}
 </style>
 </head>
 <body>

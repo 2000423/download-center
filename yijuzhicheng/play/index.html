@@ -20,15 +20,23 @@
   body::-webkit-scrollbar, .side::-webkit-scrollbar, .toolbar::-webkit-scrollbar { width: 8px; height: 8px; }
   body::-webkit-scrollbar-thumb, .side::-webkit-scrollbar-thumb, .toolbar::-webkit-scrollbar-thumb { background: rgba(150,168,196,.42); border-radius: 999px; }
   body::-webkit-scrollbar-track, .side::-webkit-scrollbar-track, .toolbar::-webkit-scrollbar-track { background: transparent; }
+  /* 整页锁一屏：不再用滚轮上下翻，游戏区按视口自适应 */
+  html, body { height: 100%; overflow: hidden; }
   body {
-    margin: 0; padding: 24px; background: #0F1622; color: #E7EDF7;
+    margin: 0; padding: 16px; background: #0F1622; color: #E7EDF7;
     font-family: system-ui, -apple-system, BlinkMacSystemFont, "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
   }
-  .stage { display: flex; gap: 28px; align-items: flex-start; justify-content: center; flex-wrap: wrap; }
-  /* 侧边玩法说明改深色卡片：不再白底与游戏深色 HUD 割裂（用户强烈要求） */
-  .side { width: 300px; padding: 20px 20px 22px; background: #151E2E; border: 1px solid rgba(255,255,255,.08);
+  .stage { display: flex; gap: 20px; align-items: stretch; justify-content: center; flex-wrap: nowrap; height: 100%; }
+  /* 侧边玩法说明：精简为一组深色卡片，一屏放得下 */
+  .side { width: 300px; flex: none; height: 100%; overflow-y: auto; padding: 18px; background: #151E2E; border: 1px solid rgba(255,255,255,.08);
     border-radius: 18px; box-shadow: 0 18px 44px rgba(0,0,0,.28); }
-  .side h1 { font-size: 20px; margin: 0 0 12px; color: #F4F7FC; }
+  .side h1 { font-size: 19px; margin: 0 0 6px; color: #F4F7FC; }
+  .side .lead { font-size: 12px; line-height: 1.6; color: #8FA0B8; margin: 0 0 14px; }
+  .guide-grid { display: grid; gap: 10px; }
+  .gcard { background: rgba(255,255,255,.035); border: 1px solid rgba(255,255,255,.08); border-radius: 12px; padding: 11px 13px; }
+  .gc-t { font-size: 12px; font-weight: 700; color: #8FC0FF; margin-bottom: 4px; }
+  .gc-b { font-size: 12px; line-height: 1.6; color: #A9B6CA; }
+  .gc-b b { color: #E7EDF7; }
   .side h2 { font-size: 14px; color: #8FC0FF; margin: 18px 0 6px; }
   .side p { font-size: 13px; line-height: 1.8; color: #A9B6CA; margin: 0 0 16px; }
   .side p b { color: #E7EDF7; }
@@ -60,6 +68,8 @@
     box-shadow: 0 24px 60px rgba(26,29,38,.2);
     overflow: hidden; display: flex; flex-direction: column; flex-shrink: 0;
   }
+  /* 桌面自适应模式：去掉模拟器边框，画布与外框严丝合缝，不产生溢出滚动 */
+  body.mode-fit .phone-land { border: none; border-radius: 16px; box-shadow: 0 18px 44px rgba(0,0,0,.28); }
   /* 手机全屏模式（clean=1）：去掉模拟器边框，画布按真实视口铺满，不再缩在中间留黑边 */
   body.mode-clean { background: #0B1310 !important; }
   body.mode-clean .phone-land { border: none; border-radius: 0; box-shadow: none; }
@@ -247,6 +257,9 @@
   .overlay-btn--home:hover {
     background: rgba(198,74,54,.92); border-color: rgba(255,196,186,.42); color: #FFF;
   }
+  .overlay-btn--full { padding: 6px 13px; font-size: 12px; background: rgba(63,164,117,.32); border-color: rgba(120,220,170,.42); color: #DFF6EA; }
+  .overlay-btn--full:hover { background: rgba(63,164,117,.92); border-color: rgba(180,240,210,.42); color: #FFF; }
+  .gc-b.state-legend { margin-top: 0; }
   .overlay-legend {
     position: absolute; right: 12px; top: 44px; z-index: 6; display: none;
     flex-direction: column; gap: 4px; padding: 8px 10px; border-radius: 10px;
@@ -309,6 +322,9 @@
   .phone-land.menu-open .subtool-fade,
   .phone-land.menu-open .canvas-tools,
   .phone-land.menu-open .overlay-legend { visibility: hidden; }
+  /* 全屏按钮开局面也保留（提到菜单层之上），其余叠加层按钮仍隐藏 */
+  .phone-land.menu-open .canvas-tools { z-index: 60; }
+  .phone-land.menu-open #btnFullscreen { visibility: visible; }
   .start-scrim {
     position: absolute; inset: 0;
     background: linear-gradient(180deg, rgba(8,14,26,.62), rgba(8,14,26,.38) 45%, rgba(8,14,26,.68));
@@ -431,54 +447,39 @@
 <body>
 <div class="stage">
   <aside class="side">
-    <h1>一局之城 · 游戏玩法</h1>
-    <p>你是一位新任市长：手里只有一块四周都是高速的空地和 <b>¥ 15,000</b> 启动资金。把小镇一步步做大，人口越多、幸福越高，每秒进账越快。<b>本局没有存档</b>——退出后重新进入需从头再来，所以这一局就是你的全部机会。</p>
-
-    <h2>上手五步</h2>
-    <ol>
-      <li><b>铺路接高速</b>：先用「道路」把路网接到地图上方的高速，没接高速的路网是死的，建筑也放不了（只有道路可以自由铺）。</li>
-      <li><b>建住宅</b>：在「生活类」里选住宅（低/中/高密度），沿路摆放，市民才会搬进来；每户自带一辆车。</li>
-      <li><b>补服务</b>：水电局、警局、消防、诊所、学校、垃圾场、墓地……服务建筑要经路网连到居民区才有覆盖，且一所只能服务有限人口。</li>
-      <li><b>造产业</b>：商业、工业、办公楼提供岗位和税收，但工业、垃圾场会产生污染噪音，别贴着住宅盖。</li>
-      <li><b>看需求补短板</b>：顶部四条需求条亮起来就是市面在缺东西，点开能看「缺什么」；点金币、人口还能看收支构成和人口来源。</li>
-    </ol>
-
-    <h2>核心规则</h2>
-    <ul>
-      <li><b>幸福 0~100</b>：开局只有个位数到十几分，服务、教育、就业、环境都到位才能冲上 60~80——别指望一开局就高幸福。</li>
-      <li><b>密度定死</b>：低/中/高密度在建造时就确定，之后永不升级、不降级。</li>
-      <li><b>拆除返还 30%</b>：按当前密度建造价的 30% 返还（公园、道路除外；停车场与服务建筑按基础价返还）。</li>
-      <li><b>时间节奏</b>：一昼夜 5 分钟，每 2 秒结算一次收益，车辆 120ms 走一步；堵车会拖累商业和工业。</li>
-      <li><b>交通与停车</b>：路边禁止停车，车位只能在家或停车场（6 位），满位就堵在路上。</li>
-      <li><b>大城更贵</b>：道路每格要维护费，人口 500 起维护费开始放大（最多 ×3）——后期不是躺赚，要精打细算。</li>
-      <li><b>大城更挤</b>：人口超过 400 后拥挤开始压住宅幸福（最多 -15），只有公园能缓解——留出绿地才养得起大城市。</li>
-    </ul>
-
-    <h2>操作</h2>
-    <p>滚轮缩放、<b>按住滚轮（中键）拖动 = 自由旋转视角</b>（城市天际线式任意角度，上下俯仰 + 左右环绕）、<b>WASD / 方向键移动视野</b>（W 前进 S 后退 A 左移 D 右移）、Shift+拖动平移、双指缩放/拖动/扭转自由旋转；单指或左键拖动连续铺路和分区。工具栏点「生活类 / 服务类 / 产业类」展开子工具，选中后浮层保持展开，方便连续铺同类建筑；「查看」工具点地块看详情，悬停建筑看服务覆盖与污染。</p>
-
-    <h2>建造辅助</h2>
-    <ul>
-      <li><b>放置预览</b>：鼠标悬停地块就直接给结论——<b>绿</b>=可建、<b>黄</b>=未连通（先铺路接高速）、<b>橙</b>=资金不足但可透支、<b>红</b>=不可建，不用点下去才发现失败。</li>
-      <li><b>因子条</b>：用「查看」点地块，详情里把服务覆盖 / 教育 / 幸福 / 就业 / 污染 / 噪音做成彩色条，哪一项在拖幸福一眼可见；需求条点开也有进度条与 34 / 67 密度刻度。</li>
-      <li><b>叠加层</b>：画布右上四枚独立按钮（关闭 / 连通 / 拥堵 / 环境），点哪枚切哪档；也可按 <b>L</b> 循环。</li>
-    </ul>
-    <div class="state-legend" aria-label="建造状态图例">
-      <span><i class="lg-ok"></i>绿 · 可建</span>
-      <span><i class="lg-warn"></i>黄 · 未连通</span>
-      <span><i class="lg-debt"></i>橙 · 可透支</span>
-      <span><i class="lg-bad"></i>红 · 不可建</span>
+    <h1>一局之城 · 玩法速览</h1>
+    <p class="lead">一局一把，¥15,000 起步，把四边高速里的空地建成自己的城。<b>没有存档，退出即结束。</b></p>
+    <div class="guide-grid">
+      <div class="gcard">
+        <div class="gc-t">① 上手五步</div>
+        <div class="gc-b">铺路接高速 → 建住宅 → 补服务 → 造产业 → 看需求补短板</div>
+      </div>
+      <div class="gcard">
+        <div class="gc-t">② 核心规则</div>
+        <div class="gc-b">幸福 0~100 · 密度建时定死 · 拆除返 30% · 昼夜 5 分钟一轮 · 每 2 秒结算</div>
+      </div>
+      <div class="gcard">
+        <div class="gc-t">③ 城市要活</div>
+        <div class="gc-b">服务要沿路连通；工业 / 垃圾场别贴住宅；人口 500+ 维护费涨、400+ 拥挤压幸福，靠公园缓解</div>
+      </div>
+      <div class="gcard">
+        <div class="gc-t">④ 操作</div>
+        <div class="gc-b">滚轮缩放 · <b>中键拖动</b>旋转视角 · <b>WASD / 方向键</b>移动 · Shift+拖动平移 · 单指/左键拖动铺地</div>
+      </div>
+      <div class="gcard">
+        <div class="gc-t">⑤ 颜色提示</div>
+        <div class="gc-b state-legend" aria-label="建造状态图例">
+          <span><i class="lg-ok"></i>绿 · 可建</span>
+          <span><i class="lg-warn"></i>黄 · 未连通</span>
+          <span><i class="lg-debt"></i>橙 · 可透支</span>
+          <span><i class="lg-bad"></i>红 · 不可建</span>
+        </div>
+      </div>
+      <div class="gcard">
+        <div class="gc-t">⑥ 小技巧</div>
+        <div class="gc-b">悬停金币 / 人口看收支与人口来源；点需求条看「缺什么」；画布右上切叠加层（<b>L</b> 键循环）</div>
+      </div>
     </div>
-
-    <div class="ctrl">
-      <div class="row"><span>视角</span><b>Isometric 2:1</b></div>
-      <div class="row"><span>地图</span><b>50 × 50 逻辑格</b></div>
-      <div class="row"><span>初始资金</span><b>¥ 15,000</b></div>
-      <div class="row"><span>建筑配色</span><b>住绿 / 商蓝 / 工橙 / 办紫</b></div>
-      <div class="row"><span>结算 / 车辆</span><b>2 秒 / 120ms</b></div>
-    </div>
-
-    <p class="note">提示：悬停「金币 / 人口」看收支构成与人口来源；悬停需求条第一行显示当前需求等级（低/中/高密度、国家机密工业、写字楼大厦）。</p>
   </aside>
 
   <div class="phone-land menu-open">
@@ -510,6 +511,7 @@
         <div class="overlay-btn" data-ov="2">拥堵</div>
         <div class="overlay-btn" data-ov="3">环境</div>
         <span class="ct-sep"></span>
+        <div class="overlay-btn overlay-btn--full" id="btnFullscreen" title="只全屏当前网页，再点一次退出">全屏</div>
         <div class="overlay-btn overlay-btn--home" id="btnHome">返回主界面</div>
       </div>
       <div class="overlay-legend" id="overlayLegend"></div>
@@ -3139,11 +3141,15 @@
   (function(){
     var side=document.querySelector('.side');
     var sideHidden=!side||side.style.display==='none';
-    if(!sideHidden)return;
-    document.body.classList.add('mode-clean');
+    document.body.classList.add(sideHidden?'mode-clean':'mode-fit');
     function fitStage(){
       if(!window.__resizeGame)return;
-      window.__resizeGame(window.innerWidth, window.innerHeight);
+      if(sideHidden){ window.__resizeGame(window.innerWidth, window.innerHeight); return; }
+      // 桌面：侧栏 + 间距 + body 内边距之外的宽度全给游戏区，整页锁一屏不滚动
+      var sideW=side?side.offsetWidth:300;
+      var availW=window.innerWidth-sideW-20-32;
+      var availH=window.innerHeight-32;
+      window.__resizeGame(Math.max(560,Math.round(availW)), Math.max(360,Math.round(availH)));
     }
     window.addEventListener('resize',fitStage);
     window.addEventListener('orientationchange',function(){ setTimeout(fitStage,150); });
@@ -3164,6 +3170,35 @@
     overlayIdx=Number(b.getAttribute('data-ov'))||0;
     applyOverlay();
   });
+  // 全屏按钮（2026-11-28）：只把当前网页全屏，再点一次退出；切换后自动重算画布尺寸
+  (function(){
+    var btn=byId('btnFullscreen');
+    if(!btn)return;
+    function isFull(){ return !!(document.fullscreenElement||document.webkitFullscreenElement); }
+    function syncLabel(){
+      var on=isFull();
+      btn.textContent=on?'退出全屏':'全屏';
+      btn.classList.toggle('active',on);
+    }
+    btn.addEventListener('click',function(e){
+      e.preventDefault(); e.stopPropagation();
+      if(isFull()){
+        if(document.exitFullscreen) document.exitFullscreen();
+        else if(document.webkitExitFullscreen) document.webkitExitFullscreen();
+      }else{
+        var el=document.documentElement;
+        if(el.requestFullscreen) el.requestFullscreen();
+        else if(el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+      }
+    });
+    function onChanged(){
+      syncLabel();
+      setTimeout(function(){ window.dispatchEvent(new Event('resize')); },120);
+    }
+    document.addEventListener('fullscreenchange',onChanged);
+    document.addEventListener('webkitfullscreenchange',onChanged);
+    syncLabel();
+  })();
   // 返回主界面（2026-11-24 用户要求）：先弹「是否退回至主界面？」二次确认，确定才回开局面
   function openHomeConfirm(){
     byId('homeMask').classList.add('show');

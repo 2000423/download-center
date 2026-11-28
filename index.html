@@ -245,6 +245,7 @@
   }
   .os-opt.android .os-ico { background: linear-gradient(135deg, #9bd9d3, #7fc3bc); }
   .os-opt.ios .os-ico { background: linear-gradient(135deg, #cfc4eb, #ab9bd8); }
+  .os-opt.desktop .os-ico { background: linear-gradient(135deg, #a9cbe8, #8fb4d8); font-size: 18px; }
   .os-opt .os-txt b { display: block; font-size: 14px; color: #3c414c; }
   .os-opt .os-txt span { display: block; margin-top: 3px; font-size: 12px; color: var(--ink-soft); line-height: 1.55; }
   .os-opt .os-txt .os-note { display: block; margin-top: 4px; font-size: 11px; font-style: normal; color: var(--ink-faint); line-height: 1.5; }
@@ -367,9 +368,17 @@
       <div class="os-opt ios" id="optIos">
         <div class="os-ico">iPhone</div>
         <div class="os-txt">
-          <b>iPhone / iPad</b>
-          <span>打开网页版 → Safari 底部分享按钮 →「添加到主屏幕」，即可像 App 一样使用</span>
+          <b>iPhone / iPad / 网页版</b>
+          <span>浏览器打开网页版直接用；iPhone 再点底部分享 →「添加到主屏幕」，即可像 App 一样使用</span>
           <i class="os-note">安卓点这里也能正常打开使用；iPhone 无法安装 APK，只能用这种方式</i>
+        </div>
+      </div>
+      <div class="os-opt desktop" id="optDesktop" style="display:none">
+        <div class="os-ico">💻</div>
+        <div class="os-txt">
+          <b>电脑打开</b>
+          <span>新开一个网页直接加载游戏，不用安装，随时开玩</span>
+          <i class="os-note">横屏体验更佳；关掉网页这一局就结束</i>
         </div>
       </div>
       <div class="modal-cancel" id="modalCancel">取消</div>
@@ -420,19 +429,29 @@ function verCmp(a, b) {
 }
 
 function openModal(f) {
-  document.getElementById('modalName').textContent = f.name + ' · 选择系统';
-  APP_URLS.web = f.file;
+  const desktopMode = !!f.desktopUrl;
+  document.getElementById('modalName').textContent = f.name + (desktopMode ? ' · 选择打开方式' : ' · 选择系统');
+  APP_URLS.web = f.desktopUrl || f.file;
   APP_URLS.apk = f.apkMirror || '';
   const ua = navigator.userAgent;
   const isIos = /iPhone|iPad|iPod/i.test(ua);
   const isAndroid = /Android/i.test(ua);
-  const onlyAndroid = !!f.androidOnly;
-  document.getElementById('optIos').style.display = onlyAndroid ? 'none' : 'flex';
-  document.getElementById('modalSub').textContent = onlyAndroid
-    ? '这款应用仅支持安卓，下载安装包后点开即可安装'
-    : '同一个应用，两种获取方式，功能完全一致';
-  document.getElementById('optIos').classList.toggle('recommend', !onlyAndroid && isIos);
-  document.getElementById('optAndroid').classList.toggle('recommend', onlyAndroid || isAndroid);
+  const onlyAndroid = !!f.androidOnly && !desktopMode;
+  const optIos = document.getElementById('optIos');
+  const optAndroid = document.getElementById('optAndroid');
+  const optDesktop = document.getElementById('optDesktop');
+
+  optIos.style.display = (onlyAndroid || desktopMode) ? 'none' : 'flex';
+  optDesktop.style.display = desktopMode ? 'flex' : 'none';
+  optAndroid.querySelector('b').textContent = desktopMode ? '安卓下载' : 'Android 手机';
+  document.getElementById('modalSub').textContent = desktopMode
+    ? '同一个游戏，安卓装安装包，电脑开网页直接玩，玩法一致'
+    : onlyAndroid
+      ? '这款应用仅支持安卓，下载安装包后点开即可安装'
+      : '同一个应用，两种获取方式，功能完全一致';
+  optIos.classList.toggle('recommend', !onlyAndroid && !desktopMode && isIos);
+  optAndroid.classList.toggle('recommend', desktopMode ? isAndroid : (onlyAndroid || isAndroid));
+  optDesktop.classList.toggle('recommend', desktopMode && !isAndroid);
   document.getElementById('modalMask').classList.add('show');
 }
 function closeModal() { document.getElementById('modalMask').classList.remove('show'); }
@@ -443,6 +462,10 @@ document.getElementById('optAndroid').addEventListener('click', () => {
   closeModal();
 });
 document.getElementById('optIos').addEventListener('click', () => {
+  if (APP_URLS.web) window.open(APP_URLS.web, '_blank');
+  closeModal();
+});
+document.getElementById('optDesktop').addEventListener('click', () => {
   if (APP_URLS.web) window.open(APP_URLS.web, '_blank');
   closeModal();
 });
@@ -605,7 +628,7 @@ fetch('files.json?t=' + Date.now())
 
     const btnFor = f => f.pageOnly
       ? `<a class="dl-btn orange" href="${f.file}" target="_blank" rel="noopener">${f.cta || '📄 查看详情'}</a>`
-      : (f.androidOnly && f.apkMirror
+      : (f.androidOnly && f.apkMirror && !f.desktopUrl
         ? `<a class="dl-btn" href="${f.apkMirror}" download>⬇ 安卓下载</a>`
         : `<a class="dl-btn orange" href="javascript:void(0)">📲 获取应用</a>`);
 
@@ -692,7 +715,7 @@ fetch('files.json?t=' + Date.now())
 
     document.querySelectorAll('.file-card').forEach(card => {
       const f = files.find(x => x.id === card.dataset.id);
-      if (!f || f.pageOnly || (f.androidOnly && f.apkMirror)) return;
+      if (!f || f.pageOnly || (f.androidOnly && f.apkMirror && !f.desktopUrl)) return;
       const btn = card.querySelector('.dl-btn');
       if (!btn) return;
       btn.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); openModal(f); });

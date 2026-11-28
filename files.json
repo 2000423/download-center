@@ -12,11 +12,12 @@
       "size": "2.7 MB · Android 8.0+",
       "date": "2026-11-26",
       "tags": ["Android", "游戏", "新品"],
-      "platforms": "仅 Android",
+      "platforms": "Android / 网页版",
       "desc": "横屏单机城建游戏，对标《城市：天际线》观感：50×50 格子、四边高速路网、20 余种建筑分区建造。WebGL 3D 自由视角，轨道相机、双指缩放拖动、长按旋转，昼夜 5 分钟一轮流转。RCI+O 四类需求独立模拟，警局、消防、学校、医院逐项覆盖，车流与行人实时穿梭。透支建造：资金不足也能放，金币可为负（破产锁 -10000）。每局都是一座新城市，退出即落幕。安卓装 APK，纯离线单机、零权限。",
       "file": "yijuzhicheng/",
       "apkMirror": "files/yijuzhicheng-v0.1.3.apk",
       "androidOnly": true,
+      "desktopUrl": "yijuzhicheng/play/",
       "shot": "yijuzhicheng/screenshot-city.png",
       "features": [
         "WebGL 3D 自由视角：轨道相机随意环绕、缩放、俯仰，程序化建筑立面，不支持时自动降级 2D",

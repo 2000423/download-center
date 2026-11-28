@@ -70,6 +70,11 @@
   }
   /* 桌面自适应模式：去掉模拟器边框，画布与外框严丝合缝，不产生溢出滚动 */
   body.mode-fit .phone-land { border: none; border-radius: 16px; box-shadow: 0 18px 44px rgba(0,0,0,.28); }
+  /* 网页内沉浸全屏：收起左侧玩法卡片，游戏画面铺满整个网页（不是浏览器屏幕全屏） */
+  body.mode-immersive { padding: 0; }
+  body.mode-immersive .side { display: none; }
+  body.mode-immersive .stage { gap: 0; }
+  body.mode-immersive .phone-land { border-radius: 0; box-shadow: none; }
   /* 手机全屏模式（clean=1）：去掉模拟器边框，画布按真实视口铺满，不再缩在中间留黑边 */
   body.mode-clean { background: #0B1310 !important; }
   body.mode-clean .phone-land { border: none; border-radius: 0; box-shadow: none; }
@@ -2026,6 +2031,8 @@
       var tip = byId('hoverTip'); if (tip) tip.classList.remove('show');
       if (hoverIdx !== -1) { hoverIdx = -1; render(ctx, city, tr, -1, pedMapCache); }
     }
+    // HUD / 工具栏显示状态变了，画布可用高度随之改变，重算一次避免留黑边或压住工具栏
+    setTimeout(function(){ window.dispatchEvent(new Event('resize')); }, 20);
   }
   function isSettingsOpen(){ var b=byId('settingsBox'); return !!(b&&b.classList.contains('show')); }
   function openSettings() {
@@ -2226,8 +2233,13 @@
     land.style.width=vw+'px';
     land.style.height=vh+'px';
     land.style.transform='none';
-    var extra=0,parts=land.querySelectorAll('.hud,.game-hint,.toolbar'),i;
-    for(i=0;i<parts.length;i++) extra+=parts[i].offsetHeight;
+    var extra=0,parts=land.querySelectorAll('.hud,.game-hint,.toolbar'),i,cs;
+    for(i=0;i<parts.length;i++){
+      // 开局面这些栏只是 visibility:hidden，仍占 offsetHeight；隐藏时不能算进画布扣减，否则上下留黑边
+      cs=window.getComputedStyle?getComputedStyle(parts[i]):null;
+      if(cs&&cs.visibility==='hidden') continue;
+      extra+=parts[i].offsetHeight;
+    }
     VIEW_W=Math.max(320,Math.round(vw));
     VIEW_H=Math.max(200,Math.round(vh-extra));
     canvas.style.width=VIEW_W+'px';
@@ -3144,7 +3156,10 @@
     document.body.classList.add(sideHidden?'mode-clean':'mode-fit');
     function fitStage(){
       if(!window.__resizeGame)return;
-      if(sideHidden){ window.__resizeGame(window.innerWidth, window.innerHeight); return; }
+      // 沉浸全屏 / clean 模式：游戏区直接吃满整个视口
+      if(sideHidden||document.body.classList.contains('mode-immersive')){
+        window.__resizeGame(window.innerWidth, window.innerHeight); return;
+      }
       // 桌面：侧栏 + 间距 + body 内边距之外的宽度全给游戏区，整页锁一屏不滚动
       var sideW=side?side.offsetWidth:300;
       var availW=window.innerWidth-sideW-20-32;
@@ -3170,33 +3185,21 @@
     overlayIdx=Number(b.getAttribute('data-ov'))||0;
     applyOverlay();
   });
-  // 全屏按钮（2026-11-28）：只把当前网页全屏，再点一次退出；切换后自动重算画布尺寸
+  // 网页内沉浸全屏（2026-11-28）：收起玩法卡片、游戏铺满整个网页，再点一次恢复；不调用浏览器屏幕全屏 API
   (function(){
     var btn=byId('btnFullscreen');
     if(!btn)return;
-    function isFull(){ return !!(document.fullscreenElement||document.webkitFullscreenElement); }
     function syncLabel(){
-      var on=isFull();
+      var on=document.body.classList.contains('mode-immersive');
       btn.textContent=on?'退出全屏':'全屏';
       btn.classList.toggle('active',on);
     }
     btn.addEventListener('click',function(e){
       e.preventDefault(); e.stopPropagation();
-      if(isFull()){
-        if(document.exitFullscreen) document.exitFullscreen();
-        else if(document.webkitExitFullscreen) document.webkitExitFullscreen();
-      }else{
-        var el=document.documentElement;
-        if(el.requestFullscreen) el.requestFullscreen();
-        else if(el.webkitRequestFullscreen) el.webkitRequestFullscreen();
-      }
-    });
-    function onChanged(){
+      document.body.classList.toggle('mode-immersive');
       syncLabel();
-      setTimeout(function(){ window.dispatchEvent(new Event('resize')); },120);
-    }
-    document.addEventListener('fullscreenchange',onChanged);
-    document.addEventListener('webkitfullscreenchange',onChanged);
+      setTimeout(function(){ window.dispatchEvent(new Event('resize')); },30);
+    });
     syncLabel();
   })();
   // 返回主界面（2026-11-24 用户要求）：先弹「是否退回至主界面？」二次确认，确定才回开局面
